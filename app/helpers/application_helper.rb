@@ -162,5 +162,4 @@ module ApplicationHelper
     text_field_tag(method, val, options) + auto_complete_clear_value_button(method) +
       auto_complete_field_jquery(method, "#{path}/auto_complete_#{method}", completion_options)
   end
-
 end

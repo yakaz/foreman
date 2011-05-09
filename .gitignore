@@ -12,3 +12,5 @@ public/javascripts/active_scaffold
 public/stylesheets/active_scaffold
 *.sw?
 .idea/*
+/extras/api
+tags

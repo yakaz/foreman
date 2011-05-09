@@ -1,0 +1,10 @@
+<% title "Login" %>
+<ul>
+  <% form_for :login, {:url => login_users_path}  do |f| %>
+    <li> <%= f.label :login, "Username" %> </li>
+    <li><%= f.text_field :login %></li>
+    <li><%= f.label :password %></li>
+    <li><%= f.password_field :password %></li>
+    <li><%= f.submit %></li>
+<% end %>
+</ul>

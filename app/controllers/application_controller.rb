@@ -8,8 +8,7 @@ class ApplicationController < ActionController::Base
   # standard layout to all controllers
   helper 'layout'
 
-  before_filter :require_ssl, :require_login
-  before_filter :load_tabs, :manage_tabs, :unless => :request_json?
+  before_filter :prepare_for_mobile, :require_ssl, :require_login
   before_filter :welcome, :detect_notices, :only => :index, :unless => :request_json?
   before_filter :authorize, :except => :login
 
@@ -44,7 +43,7 @@ class ApplicationController < ActionController::Base
       if SETTINGS[:login] and SETTINGS[:login] == true
         # authentication is enabled
         if request_json?
-          # JSON requests (REST API calls) use basic http authenitcation and should not use/store cookies
+          # JSON requests (REST API calls) use basic http authentication and should not use/store cookies
           User.current = authenticate_or_request_with_http_basic { |u, p| User.try_to_login(u, p) }
           return !User.current.nil?
         end
@@ -54,7 +53,7 @@ class ApplicationController < ActionController::Base
         # We assume we always have a user logged in, if authentication is disabled, the user is the build-in admin account.
         unless User.current = User.find_by_login("admin")
           error "Unable to find internal system admin account - Recreating . . ."
-          User.current = User.current = User.create_admin
+          User.current = User.create_admin
         end
         session[:user] = User.current.id unless request_json?
       end
@@ -134,43 +133,24 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  def mobile_device?
+    if session[:mobile_param]
+      session[:mobile_param] == "1"
+    else
+      request.user_agent =~ /Mobile|webOS/
+    end
+  end
+
+  helper_method :mobile_device?
+
+  def prepare_for_mobile
+    session[:mobile_param] = params[:mobile] if params[:mobile]
+    request.format = :mobile if mobile_device?
+  end
+
   private
   def detect_notices
     @notices = current_user.notices
-  end
-
-  def active_tab=(value); @active_tab = session[:controller_active_tabs][controller_name] = value; end
-
-  def load_tabs
-    controller_tabs        = session[:controller_tabs]               ||= {}
-    @tabs                  = controller_tabs[controller_name]        ||= {}
-    controller_active_tabs = session[:controller_active_tabs]        ||= {}
-    @active_tab            = controller_active_tabs[controller_name] ||= ""
-  end
-
-  def manage_tabs
-    # Clear the active tab if jumping between different controller's
-    @controller_changed       = session[:last_controller] != controller_name
-    session[:last_controller] = controller_name
-    self.active_tab           = "" if @controller_changed
-
-    return true if params[:tab_name].empty? or params[:action] != "index"
-
-    if params[:tab_name] == "Reset"
-      self.active_tab    = ""
-    elsif params[:remove_me] and @tabs.has_key? params[:tab_name]
-      @tabs.delete params[:tab_name]
-      # If we delete the active tab then clear the active tab selection
-      if @active_tab == params[:tab_name]
-        self.active_tab    = ""
-      else
-        # And redirect back as we do  not want to perform the deleted tab's search
-        redirect_to :back
-      end
-    else
-      self.active_tab    = params[:tab_name]
-      @tabs[@active_tab] = params[:search]
-    end
   end
 
   def require_admin

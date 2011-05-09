@@ -42,6 +42,15 @@ class HostsController < ApplicationController
         # rendering index page for non index page requests (out of sync hosts etc)
         render :index if title and @title = title
       end
+      format.mobile do
+        @hosts = @search.paginate :page => params[:page], :include => included_associations
+        # SQL optimizations queries
+        @last_reports = Report.maximum(:id, :group => :host_id, :conditions => {:host_id => @hosts})
+        @fact_kernels = FactValue.all(:select => "host_id, fact_values.value", :joins => [:host, :fact_name],
+                                     :conditions => {"fact_values.host_id" => @hosts, "fact_names.name" => 'kernel'})
+        # rendering index page for  non index page requests (out of sync hosts etc)
+        render :index if title and @title = title
+      end
       format.json { render :json => search.all(:select => "hosts.name", :include => included_associations).map(&:name) }
       format.yaml { render :text => search.all(:select => "hosts.name", :include => included_associations).map(&:name).to_yaml }
     end
