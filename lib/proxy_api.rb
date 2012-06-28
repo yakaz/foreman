@@ -93,7 +93,7 @@ module ProxyAPI
 
     def classes env
       return if env.blank?
-      parse(get "environments/#{env}/classes").map { |k| k.keys.first }
+      parse(get "environments/#{env}/classes")
     rescue RestClient::ResourceNotFound
       []
     end
