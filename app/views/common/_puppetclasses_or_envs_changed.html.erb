@@ -4,7 +4,7 @@
     <legend>Accept these environment changes found in puppet? </legend>
       <table>
         <th>Environment</th><th>Operation</th><th>Classes</th>
-        <% for kind in ["new", "obsolete"] -%>
+        <% for kind in ["new", "obsolete", "updated"] -%>
           <% unless (envs = @changed[kind]).empty? -%>
             <% for env in envs.keys.sort -%>
               <tr class="<%= cycle("even", "odd")-%>" >
@@ -13,7 +13,7 @@
                   <%= env -%>
                 </td>
                 <td>
-                  <%= kind == "new" ? "Add:" : "Remove:" -%>
+                  <%= {"new" => "Add:", "obsolete" => "Remove:", "updated" => "Update:"}[kind] -%>
                 </td>
                 <% pcs = @changed[kind][env] -%>
                 <td>

@@ -24,7 +24,12 @@ class Environment < ActiveRecord::Base
       url = (proxy || find_import_proxies.first).try(:url)
       raise "Can't find a valid Foreman Proxy with a Puppet feature" if url.blank?
       proxy = ProxyAPI::Puppet.new :url => url
-      HashWithIndifferentAccess[proxy.environments.map { |e| [e, proxy.classes(e)] }]
+      HashWithIndifferentAccess[proxy.environments.map { |e|
+        [e, HashWithIndifferentAccess[proxy.classes(e).map {|k|
+          klass = k.keys.first
+          [klass, k[klass]["params"]]
+        }]]
+      }]
     end
 
     # Imports all Environments and classes from Puppet modules
@@ -35,23 +40,43 @@ class Environment < ActiveRecord::Base
       disk_tree.default = []
 
       # Create a representation of the foreman configuration where the environments are hash keys and the classes are sorted lists
-      db_tree           = HashWithIndifferentAccess[Environment.all.map { |e| [e.name, e.puppetclasses.select(:name).map(&:name)] }]
+      db_tree           = HashWithIndifferentAccess[Environment.select([:id, :name]).map { |e| [e.name, HashWithIndifferentAccess[e.puppetclasses.select([:id, :name]).map {|k| [k.name, HashWithIndifferentAccess[k.parameters.select([:id, :name, :value]).map {|p| [p.name, p.value]}]] }]] }] # this loads the class parameters directly, ie. for obsoleted classes too
       db_tree.default   = []
 
-      changes = { "new" => { }, "obsolete" => { } }
+      changes = { "new" => { }, "obsolete" => { }, "updated" => { } }
       # Generate the difference between the on-disk and database configuration
       for env in db_tree.keys
         # Show the environment if there are classes in the db that do not exist on disk
         # OR if there is no mention of the class on-disk
-        surplus_db_classes = db_tree[env] - disk_tree[env]
-        surplus_db_classes << "_destroy_" unless disk_tree.has_key?(env) # We need to distinguish between an empty and an obsolete env
+        surplus_db_classes = db_tree[env].dup.delete_if { |k,v| disk_tree[env].has_key? k }
+        surplus_db_classes["_destroy_"] = "_destroy_" unless disk_tree.has_key?(env) # We need to distinguish between an empty and an obsolete env
         changes["obsolete"][env] = surplus_db_classes if surplus_db_classes.size > 0
       end
       for env in disk_tree.keys
-        extra_disk_classes = disk_tree[env] - db_tree[env]
+        extra_disk_classes = disk_tree[env].dup.delete_if { |k,v| db_tree[env].has_key? k }
         # Show the environment if there are new classes compared to the db
         # OR if the environment has no puppetclasses but does not exist in the db
         changes["new"][env] = extra_disk_classes if (extra_disk_classes.size > 0 or (disk_tree[env].size == 0 and Environment.find_by_name(env).nil?))
+      end
+      for env_str in db_tree.keys & disk_tree.keys
+        env = Environment.find_by_name(env_str)
+        db_params = db_tree[env_str] # read the already fetched parameters
+        updated_classes = HashWithIndifferentAccess[
+          db_params.each.map do |klass, params|
+            param_updates = {}
+            disk_params = disk_tree[env_str][klass]
+            if disk_params
+              surplus_db_params = params.dup.delete_if { |p,v| disk_params.has_key? p }
+              param_updates['obsolete'] = surplus_db_params if surplus_db_params.size > 0
+              extra_disk_params = disk_params.dup.delete_if { |p,v| params.has_key? p }
+              param_updates['new'] = extra_disk_params if extra_disk_params.size > 0
+              updated_params = disk_params.select { |p,v| (params.has_key? p) && (params[p] != v) }
+              param_updates['updated'] = updated_params if updated_params.size > 0
+              [ klass, param_updates ] if param_updates.size > 0
+            end
+          end.compact
+        ]
+        changes["updated"][env_str] = updated_classes if updated_classes.size > 0
       end
 
       # Remove environments that are in config/ignored_environments.yml
@@ -63,6 +88,9 @@ class Environment < ActiveRecord::Base
         end
         for env in ignored[:obsolete]
           changes["obsolete"].delete env
+        end
+        for env in ignored[:updated]
+          changes["updated"].delete env
         end
       end
       changes
@@ -84,15 +112,23 @@ class Environment < ActiveRecord::Base
         env = Environment.find_or_create_by_name env_str
         if env.valid? and !env.new_record?
           begin
-            pclasses = eval(changed[:new][env_str])
+            pclasses = ActiveSupport::JSON.decode(changed[:new][env_str])
           rescue => e
-            @import_errors << "Failed to eval #{changed[:new][env_str]} as an array:" + e.message
+            @import_errors << "Failed to eval #{changed[:new][env_str]} as a hash:" + e.message
             next
           end
-          for pclass in pclasses
-            pc = Puppetclass.find_or_create_by_name pclass
+          pclasses.each do |pclass,parameters|
+            pc = Puppetclass.find_or_create_by_name :name => pclass
             if pc.errors.empty?
               env.puppetclasses << pc
+              parameters.each do |param_str, value|
+                key = LookupKey.create :key => "#{pclass}/#{param_str}", :default_value => value, :puppetclass_id => pc.id
+                if key.errors.empty?
+                  pc.lookup_keys << key
+                else
+                  @import_errors += key.errors.map(&:to_s)
+                end
+              end if changed_params["new"]
             else
               @import_errors += pc.errors.map(&:to_s)
             end
@@ -108,13 +144,13 @@ class Environment < ActiveRecord::Base
         env = Environment.find_by_name env_str
         if env
           begin
-            pclasses = eval(changed[:obsolete][env_str])
+            pclasses = ActiveSupport::JSON.decode(changed[:obsolete][env_str])
           rescue => e
-            @import_errors << "Failed to eval #{changed[:obsolete][env_str]} as an array:" + e.message
+            @import_errors << "Failed to eval #{changed[:obsolete][env_str]} as a hash:" + e.message
             next
           end
           pclass = ""
-          for pclass in pclasses
+          for pclass in pclasses.keys
             unless pclass == "_destroy_"
               pc = Puppetclass.find_by_name pclass
               if pc.nil?
@@ -128,7 +164,7 @@ class Environment < ActiveRecord::Base
               end
             end
           end
-          if pclasses.include? "_destroy_"
+          if pclasses.has_key? "_destroy_"
             env.destroy
             @import_errors += env.errors.full_messages unless env.errors.empty?
           else
@@ -138,6 +174,61 @@ class Environment < ActiveRecord::Base
           @import_errors << "Unable to find environment #{env_str} in the foreman database"
         end
       end if changed[:obsolete]
+
+      # Update puppet classes with new parameters
+      for env_str in changed[:updated].keys
+        env = Environment.find_by_name env_str
+        if env.valid? and !env.new_record?
+          begin
+            pclasses = ActiveSupport::JSON.decode(changed[:updated][env_str])
+          rescue => e
+            @import_errors << "Failed to eval #{changed[:updated][env_str]} as a hash:" + e.message
+            next
+          end
+          # Process each parameter update
+          pclasses.each do |pclass, changed_params|
+            pc = Puppetclass.find_by_name pclass
+            if pc.errors.empty?
+              # Add new parameters
+              changed_params["new"].each do |param_str, value|
+                key = LookupKey.create :key => "#{pclass}/#{param_str}", :default_value => value, :puppetclass_id => pc.id
+                if key.errors.empty?
+                  pc.lookup_keys << key
+                else
+                  @import_errors += key.errors.map(&:to_s)
+                end
+              end if changed_params["new"]
+              # Unbind old parameters
+              changed_params["obsolete"].each do |param_str, value|
+                key = pc.lookup_key.find_by_name param_str
+                if key.nil?
+                  @import_errors << "Unable to find puppet class #{pclass} smart-variable #{param_str} in the foreman database"
+                else
+                  #pc.lookup_keys.delete key
+                  key.puppetclass_id = nil
+                  key.save!
+                end
+              end if changed_params["obsolete"]
+              # Update parameters (affects solely the default value)
+              changed_params["updated"].each do |param_str, value|
+                key = pc.lookup_keys.find_by_name param_str
+                if key.errors.empty?
+                  key.value = value
+                  key.save!
+                else
+                  @import_errors += key.errors.map(&:to_s)
+                end
+              end if changed_params["updated"]
+              pc.save!
+            else
+              @import_errors += pc.errors.map(&:to_s)
+            end
+          end
+        else
+          @import_errors << "Unable to find or create environment #{env_str} in the foreman database"
+        end
+      end if changed[:updated]
+
 
       @import_errors
     end
