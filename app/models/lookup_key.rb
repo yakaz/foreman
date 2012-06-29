@@ -66,13 +66,11 @@ class LookupKey < ActiveRecord::Base
   end
 
   def parameter_name
-    param = key
-    param.sub! /#{puppetclass.name}\//, '' unless puppetclass == nil
-    param
+    key.sub /^.*?\//, ''
   end
 
   def is_parameter?
-    puppetclass != nil && key.starts_with?("#{puppetclass.name}/")
+    key.include? '/'
   end
 
   private
