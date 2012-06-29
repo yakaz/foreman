@@ -9,7 +9,7 @@ class LookupKey < ActiveRecord::Base
   has_many :lookup_values, :dependent => :destroy, :inverse_of => :lookup_key
   accepts_nested_attributes_for :lookup_values, :reject_if => lambda { |a| a[:value].blank? }, :allow_destroy => true
   validates_uniqueness_of :key
-  validates_presence_of :key, :puppetclass_id
+  validates_presence_of :key
   validates_inclusion_of :validator_type, :in => VALIDATION_TYPES, :message => "invalid", :allow_blank => true, :allow_nil => true
   validate :validate_range_rule, :validate_range, :validate_list, :validate_regexp
   validates_associated :lookup_values
@@ -21,6 +21,22 @@ class LookupKey < ActiveRecord::Base
   scoped_search :in => :lookup_values, :on => :value, :rename => :value, :complete_value => true
 
   default_scope :order => 'LOWER(lookup_keys.key)'
+
+  def self.create_parameter attributes = nil, &block
+    puppetclass = attributes.delete :puppetclass
+    parameter = attributes.delete :parameter
+    if puppetclass.is_a? Puppetclass
+      attributes[:puppetclass_id] = puppetclass.id
+      puppetclass = puppetclass.name
+    end
+    attributes[:key] = "#{puppetclass}/#{parameter}"
+    self.create attributes, &block
+  end
+
+  def self.find_parameter puppetclass, parameter
+    puppetclass = puppetclass.name if puppetclass.is_a? Puppetclass
+    self.find_by_key "#{puppetclass}/#{parameter}"
+  end
 
   def to_param
     key
@@ -47,6 +63,16 @@ class LookupKey < ActiveRecord::Base
   def path=(v)
     return if v == array2path(Setting["Default_variables_Lookup_Path"])
     write_attribute(:path, v)
+  end
+
+  def parameter_name
+    param = key
+    param.sub! /#{puppetclass.name}\//, '' unless puppetclass == nil
+    param
+  end
+
+  def is_parameter?
+    puppetclass != nil && key.starts_with?("#{puppetclass.name}/")
   end
 
   private
