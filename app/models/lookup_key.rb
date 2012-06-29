@@ -38,8 +38,12 @@ class LookupKey < ActiveRecord::Base
     self.find_by_key "#{puppetclass}/#{parameter}"
   end
 
+  def self.from_param param
+    self.find_by_key(param.sub /\\/, '/')
+  end
+
   def to_param
-    key
+    key.sub /\//, '\\'
   end
 
   def to_s
