@@ -318,6 +318,8 @@ margin-left:0;margin-bottom:18px;list-style:none;display: inline;
 .table th{background: rgba(0, 0, 0, 0.08);}
 
 .delete{color: #b94a48 !important;}
+.invalid{color: #b97776 !important;}
+a.alternative{color: #75A !important;}
 
 .setting_value form { margin: 0 !important;}
 .form-actions{
