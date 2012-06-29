@@ -1,6 +1,6 @@
 class LookupKeysController < ApplicationController
   include Foreman::Controller::AutoCompleteSearch
-  before_filter :find_by_key, :except => :index
+  before_filter :find_from_param, :except => :index
   before_filter :setup_search_options, :only => :index
 
   def index
@@ -51,13 +51,9 @@ class LookupKeysController < ApplicationController
   end
 
   private
-  def find_by_key
+  def find_from_param
     if params[:id]
-      if params[:id].to_i == 0
-        @lookup_key = LookupKey.from_param(params[:id])
-      else
-        @lookup_key = LookupKey.find(params[:id])
-      end
+      @lookup_key = LookupKey.from_param(params[:id])
       not_found and return if @lookup_key.blank?
     end
   end

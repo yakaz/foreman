@@ -40,7 +40,7 @@ class Environment < ActiveRecord::Base
       disk_tree.default = []
 
       # Create a representation of the foreman configuration where the environments are hash keys and the classes are sorted lists
-      db_tree           = HashWithIndifferentAccess[Environment.all.map { |e| [e.name, HashWithIndifferentAccess[e.puppetclasses.all.map {|pc| [pc.name, HashWithIndifferentAccess[pc.lookup_keys.all.map {|k| [k.parameter_name, k.default_value] if k.is_parameter?}.compact]] }]] }]
+      db_tree           = HashWithIndifferentAccess[Environment.all.map { |e| [e.name, HashWithIndifferentAccess[e.puppetclasses.all.map {|pc| [pc.name, HashWithIndifferentAccess[pc.lookup_keys.all.map {|k| [k.key, k.default_value] if k.is_param}.compact]] }]] }]
       db_tree.default   = []
 
       changes = { "new" => { }, "obsolete" => { }, "updated" => { } }
@@ -122,7 +122,7 @@ class Environment < ActiveRecord::Base
             if pc.errors.empty?
               env.puppetclasses << pc
               parameters.each do |param_str, value|
-                key = LookupKey.create_parameter :puppetclass => pc, :parameter => param_str, :default_value => value
+                key = LookupKey.create :key => param_str, :puppetclass_id => pc.id, :is_param => true, :default_value => value
                 if key.errors.empty?
                   pc.lookup_keys << key
                 else
@@ -191,7 +191,7 @@ class Environment < ActiveRecord::Base
             if pc.errors.empty?
               # Add new parameters
               changed_params["new"].each do |param_str, value|
-                key = LookupKey.create_parameter :puppetclass => pc, :parameter => param_str, :default_value => value
+                key = LookupKey.create :key => param_str, :puppetclass_id => pc.id, :is_param => true, :default_value => value
                 if key.errors.empty?
                   pc.lookup_keys << key
                 else
@@ -200,7 +200,7 @@ class Environment < ActiveRecord::Base
               end if changed_params["new"]
               # Unbind old parameters
               changed_params["obsolete"].each do |param_str, value|
-                key = pc.lookup_keys.find_parameter :puppetclass => pc, :parameter => param_str
+                key = pc.lookup_keys.find_by_key :key => param_str
                 if key.nil?
                   @import_errors << "Unable to find puppet class #{pclass} smart-variable #{param_str} in the foreman database"
                 else
@@ -211,7 +211,7 @@ class Environment < ActiveRecord::Base
               end if changed_params["obsolete"]
               # Update parameters (affects solely the default value)
               changed_params["updated"].each do |param_str, value|
-                key = pc.lookup_keys.find_parameter :puppetclass => pc, :parameter => param_str
+                key = pc.lookup_keys.find_by_key :key => param_str
                 if key.errors.empty?
                   key.default_value = value
                   key.save!

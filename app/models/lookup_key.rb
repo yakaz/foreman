@@ -8,8 +8,9 @@ class LookupKey < ActiveRecord::Base
   belongs_to :puppetclass
   has_many :lookup_values, :dependent => :destroy, :inverse_of => :lookup_key
   accepts_nested_attributes_for :lookup_values, :reject_if => lambda { |a| a[:value].blank? }, :allow_destroy => true
-  validates_uniqueness_of :key
-  validates_presence_of :key
+  validates_uniqueness_of :key, :scope => :puppetclass_id, :if => Proc.new { |lookup_key| lookup_key.puppetclass && lookup_key.is_param } # unique parameter name per puppetclass
+  validates_uniqueness_of :key, :if => Proc.new { |lookup_key| lookup_key.puppetclass && !lookup_key.is_param }
+  validates_presence_of :key # unique global name (only for non detached smart-vars)
   validates_inclusion_of :validator_type, :in => VALIDATION_TYPES, :message => "invalid", :allow_blank => true, :allow_nil => true
   validate :validate_range_rule, :validate_range, :validate_list, :validate_regexp
   validates_associated :lookup_values
@@ -22,28 +23,18 @@ class LookupKey < ActiveRecord::Base
 
   default_scope :order => 'LOWER(lookup_keys.key)'
 
-  def self.create_parameter attributes = nil, &block
-    puppetclass = attributes.delete :puppetclass
-    parameter = attributes.delete :parameter
-    if puppetclass.is_a? Puppetclass
-      attributes[:puppetclass_id] = puppetclass.id
-      puppetclass = puppetclass.name
-    end
-    attributes[:key] = "#{puppetclass}/#{parameter}"
-    self.create attributes, &block
-  end
-
   def self.find_parameter puppetclass, parameter
     puppetclass = puppetclass.name if puppetclass.is_a? Puppetclass
     self.find_by_key "#{puppetclass}/#{parameter}"
   end
 
   def self.from_param param
-    self.find_by_key(param.sub /\\/, '/')
+    LookupKey.find(param.sub /-.*$/, '')
   end
 
   def to_param
-    key.sub /\//, '\\'
+    return id unless puppetclass # detached smart-vars have no unicity constraint
+    "#{id}-#{puppetclass.name}$#{key}"
   end
 
   def to_s
@@ -67,14 +58,6 @@ class LookupKey < ActiveRecord::Base
   def path=(v)
     return if v == array2path(Setting["Default_variables_Lookup_Path"])
     write_attribute(:path, v)
-  end
-
-  def parameter_name
-    key.sub /^.*?\//, ''
-  end
-
-  def is_parameter?
-    key.include? '/'
   end
 
   def puppetclass_name
@@ -154,7 +137,7 @@ class LookupKey < ActiveRecord::Base
   end
 
   def as_json(options={})
-    super({:only => [:key, :description, :default_value, :id]}.merge(options))
+    super({:only => [:key, :is_param, :description, :default_value, :id]}.merge(options))
   end
 
 end
