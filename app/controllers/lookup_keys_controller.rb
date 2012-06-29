@@ -54,7 +54,7 @@ class LookupKeysController < ApplicationController
   def find_by_key
     if params[:id]
       if params[:id].to_i == 0
-        @lookup_key = LookupKey.find_by_key(params[:id])
+        @lookup_key = LookupKey.from_param(params[:id])
       else
         @lookup_key = LookupKey.find(params[:id])
       end
