@@ -77,6 +77,14 @@ class LookupKey < ActiveRecord::Base
     key.include? '/'
   end
 
+  def puppetclass_name
+    if is_parameter?
+      key.sub /\/.*$/, ''
+    else
+      puppetclass.name if puppetclass
+    end
+  end
+
   private
 
   # Generate possible lookup values type matches to a given host
