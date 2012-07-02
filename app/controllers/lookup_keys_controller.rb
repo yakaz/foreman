@@ -31,6 +31,19 @@ class LookupKeysController < ApplicationController
     end
   end
 
+  def new
+    @lookup_key = LookupKey.new
+  end
+
+  def create
+    @lookup_key = LookupKey.new(params[:lookup_key])
+    if @lookup_key.save
+      process_success
+    else
+      process_error
+    end
+  end
+
   def edit
   end
 

@@ -76,7 +76,7 @@ Foreman::Application.routes.draw do
     end
 
     resources :bookmarks, :except => [:show]
-    resources :lookup_keys, :except => [:new, :create] do
+    resources :lookup_keys do
       resources :lookup_values, :only => [:index, :create, :update, :destroy]
     end
 
@@ -140,7 +140,7 @@ Foreman::Application.routes.draw do
     end
     constraints(:id => /[^\/]+/) do
       resources :hosts
-      resources :lookup_keys, :except => [:show, :new, :create]
+      resources :lookup_keys
     end
   end
 
