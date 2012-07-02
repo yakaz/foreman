@@ -15,6 +15,8 @@ class Host < Puppet::Rails::Host
   belongs_to :compute_resource
   belongs_to :image
 
+  ENC_FORMATS = [ :"puppet 0.23.0+", :"puppet 2.6.5+" ]
+
   include Hostext::Search
   include HostCommon
 
@@ -24,7 +26,7 @@ class Host < Puppet::Rails::Host
       :provider
   end
 
-  attr_reader :cached_host_params, :cached_lookup_keys_params
+  attr_reader :cached_host_params, :cached_lookup_keys_params, :cached_lookup_keys_class_params
 
   scope :recent,      lambda { |*args| {:conditions => ["last_report > ?", (args.first || (Setting[:puppet_interval] + 5).minutes.ago)]} }
   scope :out_of_sync, lambda { |*args| {:conditions => ["last_report < ? and enabled != ?", (args.first || (Setting[:puppet_interval] + 5).minutes.ago), false]} }
@@ -294,8 +296,16 @@ class Host < Puppet::Rails::Host
     end
     param.update self.params
 
+    case Setting[:enc_format].to_sym
+    when :"puppet 2.6.5+"
+      classes = Hash[self.puppetclasses_names.map {|k| [k,nil]}]
+      classes.update lookup_keys_class_params
+    else # :"puppet 0.23.0+"
+      classes = self.puppetclasses_names
+    end
+
     info_hash = {}
-    info_hash['classes'] = self.puppetclasses_names
+    info_hash['classes'] = classes
     info_hash['parameters'] = param
     info_hash['environment'] = param["foreman_env"] if Setting["enc_environment"]
 
@@ -332,16 +342,12 @@ class Host < Puppet::Rails::Host
 
   def lookup_keys_params
     return cached_lookup_keys_params unless cached_lookup_keys_params.blank?
-    p = {}
-    # lookup keys
-    if Setting["Enable_Smart_Variables_in_ENC"]
-      klasses  = puppetclasses.map(&:id)
-      klasses += hostgroup.classes.map(&:id) if hostgroup
-      LookupKey.all(:conditions => {:puppetclass_id =>klasses.flatten } ).each do |k|
-        p[k.to_s] = k.value_for(self)
-      end unless klasses.empty?
-    end
-    @cached_lookup_keys_params = p
+    @cached_lookup_keys_params = lookup_keys_fetch false
+  end
+
+  def lookup_keys_class_params
+    return cached_lookup_keys_class_params unless cached_lookup_keys_class_params.blank?
+    @cached_lookup_keys_class_params = lookup_keys_fetch true
   end
 
   def self.importHostAndFacts yaml
@@ -638,6 +644,20 @@ class Host < Puppet::Rails::Host
   end
 
   private
+  def lookup_keys_fetch class_params
+    p = Hash.new {|h,v| h[v] = {}}
+    # lookup keys
+    if Setting["Enable_Smart_Variables_in_ENC"]
+      klasses  = puppetclasses.map(&:id)
+      klasses += hostgroup.classes.map(&:id) if hostgroup
+      LookupKey.all(:conditions => {:puppetclass_id => klasses.flatten, :is_param => class_params } ).each do |k|
+        param = class_params ? p[k.puppetclass.name] : p
+        param[k.to_s] = k.value_for(self)
+      end unless klasses.empty?
+    end
+    p
+  end
+
   # align common mac and ip address input
   def normalize_addresses
     # a helper for variable scoping
