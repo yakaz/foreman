@@ -1,0 +1,6 @@
+<%= form_for @lookup_key do |f| %>
+  <%= base_errors_for @lookup_key %>
+  <%= render 'fields', :f => f %>
+  <%= submit_or_cancel f %>
+<% end -%>
+

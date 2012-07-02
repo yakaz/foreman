@@ -33,7 +33,7 @@ class LookupKey < ActiveRecord::Base
   end
 
   def to_param
-    return id unless puppetclass # detached smart-vars have no unicity constraint
+    return id.to_s unless puppetclass # detached smart-vars have no unicity constraint
     "#{id}-#{puppetclass.name}$#{key}"
   end
 

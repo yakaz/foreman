@@ -25,6 +25,10 @@ class Puppetclass < ActiveRecord::Base
   scoped_search :in => :hosts, :on => :name, :complete_value => :true, :rename => "host", :ext_method => :search_by_host, :only_explicit => true
 
 
+  def self.from_param param
+    find_by_name param
+  end
+
   def to_param
     name
   end
