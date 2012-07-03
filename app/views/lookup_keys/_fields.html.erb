@@ -12,7 +12,12 @@
   <%= text_f f, :key, :label => "Name" %>
   <%= checkbox_f f, :'is_param', :label => "Class parameter" %>
   <%= text_f f, :description %>
-  <%= text_f f, :default_value, :class => "span6", :help_inline => popover("?","value to use when there is no match", :title => "Default Value").html_safe %>
+  <%= field f, :default_value do -%>
+    <%= label_tag('', :class=>'checkbox') do -%>
+      <%= f.check_box :no_default_value, :onchange => "toggleTextFieldEmptyDisabled(getSiblingField(this, 'default_value'), isFieldChecked(this));" %> None
+    <% end -%>
+    <%= f.text_field :default_value, :class => "span6", :disabled => f.object.no_default_value %><span class="help-inline"><%= popover("?","value to use when there is no match", :title => "Default Value") %></span>
+  <% end -%>
   <%= selectable_f f, :validator_type, options_for_select(LookupKey::VALIDATION_TYPES, f.object.validator_type),
     { :include_blank => "string"},
     { :label => "Type Validator", :class => "medium",
