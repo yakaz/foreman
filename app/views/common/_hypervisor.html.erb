@@ -18,7 +18,7 @@
         <% else -%>
           <%= selectable_f f, :interface, interfaces %>
         <% end -%>
-        <%= checkbox_f f, :powerup, :help_inline => "Power up this instance", :checked => true, :label => "Start?" if type == "host" %>
+        <%= checkbox_f f, :powerup, :help_text => "Power up this instance", :checked => true, :label => "Start?" if type == "host" %>
       <% end -%>
     </div>
   </div>
