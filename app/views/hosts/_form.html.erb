@@ -71,7 +71,7 @@
         %>
       <% end -%>
       <%= checkbox_f f, :enabled, :label => "Alerts Enabled",
-        :help_inline => "Include this host within Foreman reporting"
+        :help_text => "Include this host within Foreman reporting"
       %>
       <div id='model_name'>
         <%= select_f f, :model_id, Model.all, :id, :to_label, { :include_blank => true }, {:label => "Hardware Model"} unless @host.compute_resource_id%>

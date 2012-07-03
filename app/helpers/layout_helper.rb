@@ -43,10 +43,12 @@ module LayoutHelper
   end
 
   def checkbox_f(f, attr, options = {})
-    text = options.delete(:help_inline)
+    text = options.delete(:help_text)
+    inline = options.delete(:help_inline)
     field(f, attr, options) do
       label_tag('', :class=>'checkbox') do
-      f.check_box(attr, options) + " #{text} "
+        help_inline = inline.blank? ? '' : content_tag(:span, inline, :class => "help-inline")
+        f.check_box(attr, options) + " #{text} " + help_inline.html_safe
       end
     end
   end
