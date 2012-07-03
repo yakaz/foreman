@@ -36,6 +36,33 @@ function onContentLoad(){
   $('[rel="twipsy"]').tooltip();
 }
 
+function isFieldChecked(field) {
+  return $(field).is(':checked');
+}
+
+function getSiblingField(anchor, name) {
+  return $('[name="' + $(anchor).attr('name').replace(/\[[^\]]*\]$/, '')+'['+name+']"]');
+}
+
+function setFieldEnable(field, enabled) {
+  $(field).attr('disabled', enabled ? null : 'disabled');
+}
+
+function toggleTextFieldEmptyDisabled(field, emptyDisabled) {
+  toggleTextFieldEmpty(field, emptyDisabled);
+  setFieldEnable(field, !emptyDisabled);
+}
+
+function toggleTextFieldEmpty(field, empty) {
+  field = $(field)
+  if (empty) {
+    field.attr('data-old-value', field.val());
+    field.val('');
+  } else {
+    field.val(field.attr('data-old-value'));
+    field.attr('data-old-value', null);
+  }
+}
 
 function remove_fields(link) {
   $(link).prev("input[type=hidden]").val("1");

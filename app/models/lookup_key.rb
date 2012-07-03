@@ -23,6 +23,18 @@ class LookupKey < ActiveRecord::Base
 
   default_scope :order => 'LOWER(lookup_keys.key)'
 
+  attr_accessor :no_default_value
+
+  def after_initialize
+    # Initialize our fake no_default_value attribute
+    @no_default_value = read_attribute(:default_value) == nil
+  end
+
+  def before_save
+    # Enforce no_default_value (was deferred to permit order independent assigment to default_value and no_default_value)
+    write_attribute(:default_value, nil) if @no_default_value
+  end
+
   def self.find_parameter puppetclass, parameter
     puppetclass = puppetclass.name if puppetclass.is_a? Puppetclass
     self.find_by_key "#{puppetclass}/#{parameter}"
@@ -49,6 +61,18 @@ class LookupKey < ActiveRecord::Base
       end
     end
     default_value
+  end
+
+  def default_value
+    # Hide the current default_value if no_default_value is true
+    # Note that setting this attribute works in order to permit
+    # order independent affectation for default_value and no_default_value.
+    read_attribute(:default_value) if not @no_default_value
+  end
+
+  def no_default_value= value
+    # Ensure booleanness
+    @no_default_value = ActiveRecord::ConnectionAdapters::Column.value_to_boolean value
   end
 
   def path
