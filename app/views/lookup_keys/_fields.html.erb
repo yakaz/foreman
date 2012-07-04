@@ -10,7 +10,8 @@
     end unless @puppetclass # nested smart-vars form in a tab of puppetclass/_form: no edition allowed, and the puppetclass is already visible as a context
   %>
   <%= text_f f, :key, :label => "Name" %>
-  <%= checkbox_f f, :'is_param', :label => "Class parameter" %>
+  <%= checkbox_f f, :is_param, :label => "Class parameter", :help_inline => popover("?", "Whether the smart-variable is a parameter of a parameterized class (checked), or a global parameter (unchecked).", :title => "Class parameter") %>
+  <%= checkbox_f f, :is_mandatory, :label => "Mandatory", :help_inline => popover("?", "If checked, will raise an error if there is no default value and no matcher provide a value.", :title => "Mandatory") %>
   <%= text_f f, :description %>
   <%= field f, :default_value do -%>
     <%= label_tag('', :class=>'checkbox') do -%>

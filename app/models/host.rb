@@ -16,6 +16,16 @@ class Host < Puppet::Rails::Host
   belongs_to :image
 
   ENC_FORMATS = [ :"puppet 0.23.0+", :"puppet 2.6.5+" ]
+  class UnresolvedMandatoryParametersException < RuntimeError
+    attr_reader :host, :unresolved_lookup_keys
+    def initialize host, unresolved_lookup_keys
+      @host = host
+      @unresolved_lookup_keys = unresolved_lookup_keys
+    end
+    def message
+      "Host #{@host.to_param} has #{@unresolved_lookup_keys.size} unresolved smart-variable parameters"
+    end
+  end
 
   include Hostext::Search
   include HostCommon
@@ -294,15 +304,19 @@ class Host < Puppet::Rails::Host
       param["ip"]  = ip
       param["mac"] = mac
     end
-    param.update self.params
+
+    errors = []
+    param.update self.params { |k| errors << k }
 
     case Setting[:enc_format].to_sym
     when :"puppet 2.6.5+"
       classes = Hash[self.puppetclasses_names.map {|k| [k,nil]}]
-      classes.update lookup_keys_class_params
+      classes.update lookup_keys_class_params { |k| errors << k }
     else # :"puppet 0.23.0+"
       classes = self.puppetclasses_names
     end
+
+    raise UnresolvedMandatoryParametersException.new(self, errors) unless errors.empty?
 
     info_hash = {}
     info_hash['classes'] = classes
@@ -312,8 +326,8 @@ class Host < Puppet::Rails::Host
     info_hash
   end
 
-  def params
-    host_params.update(lookup_keys_params)
+  def params &block
+    host_params.update(lookup_keys_params &block)
   end
   def clear_host_parameters_cache!
     @cached_host_params = nil
@@ -340,14 +354,20 @@ class Host < Puppet::Rails::Host
     @cached_host_params = hp
   end
 
-  def lookup_keys_params
+  # Resolves the global parameters for the host
+  # The optional block will be called for each mandatory lookup key
+  # that did not provide a value for the host
+  def lookup_keys_params &block
     return cached_lookup_keys_params unless cached_lookup_keys_params.blank?
-    @cached_lookup_keys_params = lookup_keys_fetch false
+    @cached_lookup_keys_params = lookup_keys_fetch false, &block
   end
 
-  def lookup_keys_class_params
+  # Resolves the puppetclass's parameters for the host
+  # The optional block will be called for each mandatory lookup key
+  # that did not provide a value for the host
+  def lookup_keys_class_params &block
     return cached_lookup_keys_class_params unless cached_lookup_keys_class_params.blank?
-    @cached_lookup_keys_class_params = lookup_keys_fetch true
+    @cached_lookup_keys_class_params = lookup_keys_fetch true, &block
   end
 
   def self.importHostAndFacts yaml
@@ -644,7 +664,7 @@ class Host < Puppet::Rails::Host
   end
 
   private
-  def lookup_keys_fetch class_params
+  def lookup_keys_fetch class_params, &on_missing_mandatory_key
     p = Hash.new {|h,v| h[v] = {}}
     # lookup keys
     if Setting["Enable_Smart_Variables_in_ENC"]
@@ -652,7 +672,12 @@ class Host < Puppet::Rails::Host
       klasses += hostgroup.classes.map(&:id) if hostgroup
       LookupKey.all(:conditions => {:puppetclass_id => klasses.flatten, :is_param => class_params } ).each do |k|
         param = class_params ? p[k.puppetclass.name] : p
-        param[k.to_s] = k.value_for(self)
+        value = k.value_for(self)
+        if value == nil
+          yield k if block_given? and k.is_mandatory
+        else
+          param[k.to_s] = value
+        end
       end unless klasses.empty?
     end
     p
