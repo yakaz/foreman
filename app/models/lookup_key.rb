@@ -53,6 +53,9 @@ class LookupKey < ActiveRecord::Base
     key
   end
 
+  # A nil return value is an error for mandatory lookup keys (no default value
+  # and no triggered matcher) that should be properly handled by the caller.
+  # For non mandatory lookup keys, it means that it should not be mentioned.
   #TODO: use SQL coalesce to minimize the amount of queries
   def value_for host
     path2matches(host).each do |match|
