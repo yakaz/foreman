@@ -1,9 +1,18 @@
 class LookupKey < ActiveRecord::Base
 
-  VALIDATION_TYPES = %w( regexp list )
+  VALIDATION_TYPES = %w( string regexp range boolean integer real list array hash yaml json )
+
+  TRUE_VALUES = [true, 1, '1', 't', 'T', 'true', 'TRUE', 'on', 'ON', 'yes', 'YES', 'y', 'Y'].to_set
+  FALSE_VALUES = [false, 0, '0', 'f', 'F', 'false', 'FALSE', 'off', 'OFF', 'no', 'NO', 'n', 'N'].to_set
 
   KEY_DELM = ","
   EQ_DELM  = "="
+
+  before_save :sanitize_path, :apply_default_value_stuff
+  after_initialize :load_default_value_stuff
+
+  serialize :default_value
+  serialize :validator_rule
 
   belongs_to :puppetclass
   has_many :lookup_values, :dependent => :destroy, :inverse_of => :lookup_key
@@ -12,10 +21,9 @@ class LookupKey < ActiveRecord::Base
   validates_uniqueness_of :key, :if => Proc.new { |lookup_key| lookup_key.puppetclass && !lookup_key.is_param }
   validates_presence_of :key # unique global name (only for non detached smart-vars)
   validates_inclusion_of :validator_type, :in => VALIDATION_TYPES, :message => "invalid", :allow_blank => true, :allow_nil => true
-  validate :validate_range_rule, :validate_range, :validate_list, :validate_regexp
+  before_validation :validate_and_cast_rule
+  before_validation :validate_and_cast_default_value
   validates_associated :lookup_values
-
-  before_save :sanitize_path
 
   scoped_search :on => :key, :complete_value => true, :default_order => true
   scoped_search :in => :puppetclass, :on => :name, :rename => :puppetclass, :complete_value => true
@@ -25,16 +33,18 @@ class LookupKey < ActiveRecord::Base
 
   attr_accessor :no_default_value
 
-  def after_initialize
+  private
+  def load_default_value_stuff
     # Initialize our fake no_default_value attribute
-    @no_default_value = read_attribute(:default_value) == nil
+    @no_default_value = read_attribute(:default_value).nil?
   end
 
-  def before_save
+  def apply_default_value_stuff
     # Enforce no_default_value (was deferred to permit order independent assigment to default_value and no_default_value)
     write_attribute(:default_value, nil) if @no_default_value
   end
 
+  public
   def self.find_parameter puppetclass, parameter
     puppetclass = puppetclass.name if puppetclass.is_a? Puppetclass
     self.find_by_key "#{puppetclass}/#{parameter}"
@@ -70,7 +80,21 @@ class LookupKey < ActiveRecord::Base
     # Hide the current default_value if no_default_value is true
     # Note that setting this attribute works in order to permit
     # order independent affectation for default_value and no_default_value.
-    read_attribute(:default_value) if not @no_default_value
+    read_attribute(:default_value) unless @no_default_value
+  end
+
+  def default_value_before_type_cast
+    rtn = default_value
+    case validator_type.to_sym
+    when :json
+      rtn = JSON.dump rtn
+    when :yaml, Array, Hash
+      rtn = YAML.dump rtn
+      # Remove preceding "---" and indentation, for readability in the form
+      rtn.sub! /\A---\s*$\n/, ''
+      rtn.gsub! /^#{$1}/, '' if rtn =~ /\A( +)/
+    end
+    rtn
   end
 
   def no_default_value= value
@@ -85,6 +109,20 @@ class LookupKey < ActiveRecord::Base
   def path=(v)
     return if v == array2path(Setting["Default_variables_Lookup_Path"])
     write_attribute(:path, v)
+  end
+
+  def validator_rule_before_type_cast
+    case validator_rule
+    when Range
+      start = validator_rule.begin
+      mid = validator_rule.exclude_end? ? '...' : '..'
+      stop = validator_rule.end
+      start = "\"#{start}\"" if start.is_a? String
+      stop = "\"#{stop}\"" if stop.is_a? String
+      "#{start}#{mid}#{stop}"
+    else
+      validator_rule
+    end
   end
 
   private
@@ -128,11 +166,6 @@ class LookupKey < ActiveRecord::Base
     self.path = path.tr("\s","").downcase unless path.blank?
   end
 
-  def validate_range_rule
-    return true unless (validator_type == 'range')
-    self.errors.add(:validator_rule, "is invalid") and return false unless validator_rule =~ /^(\d|"[a-z]"|'[a-z]')+\.\.(\d|"[b-z]"|'[b-z]')+$/
-  end
-
   def array2path array
     raise "invalid path" unless array.is_a?(Array)
     array.map do |sub_array|
@@ -140,23 +173,144 @@ class LookupKey < ActiveRecord::Base
     end.join("\n")
   end
 
-  def validate_regexp
-    return true unless (validator_type == 'regexp')
-    errors.add(:default_value, "is invalid") and return false unless (default_value =~ /#{validator_rule}/)
-  end
-
-  def validate_range
-    return true unless (validator_type == 'range')
-    errors.add(:default_value, "not within range #{validator_rule}") and return false unless eval(validator_rule).include?(default_value)
-  end
-
-  def validate_list
-    return true unless (validator_type == 'list')
-    errors.add(:default_value, "not in list") and return false unless validator_rule.split(KEY_DELM).map(&:strip).include?(default_value)
-  end
-
   def as_json(options={})
     super({:only => [:key, :is_param, :description, :default_value, :id]}.merge(options))
+  end
+
+  # Returns the casted value, or raises a TypeError
+  def cast_validate_value value
+    method = "cast_value_#{validator_type}".to_sym
+    return value unless self.respond_to? method, true
+    self.send(method, value) rescue raise TypeError
+  end
+
+  private
+
+  def validate_and_cast_rule
+    method = "cast_rule_#{validator_type}".to_sym
+    unless self.respond_to? method, true
+      # If there is no rule validation, then validator_rule is useless
+      self.validator_rule = nil
+    else
+      begin
+        self.validator_rule = self.send(method, self.validator_rule)
+        true
+      rescue
+        errors.add(:validator_rule, "is invalid")
+        return false
+      end
+    end
+  end
+
+  def validate_and_cast_default_value
+    return true if default_value.nil?
+    begin
+      self.default_value = cast_validate_value self.default_value
+      true
+    rescue
+      errors.add(:default_value, "is invalid")
+      false
+    end
+  end
+
+  def cast_rule_regexp rule
+    rule = Regexp.new(validator_rule)
+  end
+
+  def cast_rule_range rule
+    case rule
+    when /^(\d+)(\.{2,3})(\d+)$/
+      Range.new($1.to_i, $3.to_i, $2 == '...')
+    when /^(['"])(.*?)\1(\.{2,3})(['"])(.*?)\4$/
+      Range.new($2, $5, $3 == '...')
+    else
+      raise TypeError
+    end
+  end
+
+  def cast_rule_list rule
+    rule.split(KEY_DELM).map(&:strip)
+  end
+
+  def cast_value_range value
+    value = value.to_i if validator_rule.begin.is_a? Integer
+    raise TypeError unless validator_rule.include? value
+    value
+  end
+
+  def cast_value_regexp value
+    raise TypeError unless validator_rule === value
+    value
+  end
+
+  def cast_value_boolean value
+    return true if TRUE_VALUES.include? value
+    return false if FALSE_VALUES.include? value
+    raise TypeError
+  end
+
+  def cast_value_integer value
+    return value.to_i if value.is_a?(Numeric)
+
+    if value.is_a?(String)
+      if value =~ /^0x[0-9a-f]+$/i
+        value.to_i(16)
+      elsif value =~ /^0[0-7]+$/
+        value.to_i(8)
+      elsif value =~ /^-?\d+$/
+        value.to_i
+      else
+        raise TypeError
+      end
+    end
+  end
+
+  def cast_value_real value
+    return value if value.is_a? Numeric
+    if value.is_a?(String)
+      if value =~ /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/
+        value.to_f
+      else
+        cast_value_integer value
+      end
+    end
+  end
+
+  def cast_value_list value
+    raise TypeError unless validator_rule.include? value
+    value
+  end
+
+  def load_yaml_or_json value
+    return value unless value.is_a? String
+    begin
+      JSON.load value
+    rescue
+      YAML.load value
+    end
+  end
+
+  def cast_value_array value
+    return value if value.is_a? Array
+    return value.to_a if not value.is_a? String and value.is_a? Enumerable
+    value = load_yaml_or_json value
+    raise TypeError unless value.is_a? Array
+    value
+  end
+
+  def cast_value_hash value
+    return value if value.is_a? Hash
+    value = load_yaml_or_json value
+    raise TypeError unless value.is_a? Hash
+    value
+  end
+
+  def cast_value_yaml value
+    value = YAML.load value
+  end
+
+  def cast_value_json value
+    value = JSON.load value
   end
 
 end

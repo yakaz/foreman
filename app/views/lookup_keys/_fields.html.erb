@@ -17,16 +17,28 @@
     <%= label_tag('', :class=>'checkbox') do -%>
       <%= f.check_box :no_default_value, :onchange => "toggleTextFieldEmptyDisabled(getSiblingField(this, 'default_value'), isFieldChecked(this));" %> None
     <% end -%>
-    <%= f.text_field :default_value, :class => "span6", :disabled => f.object.no_default_value %><span class="help-inline"><%= popover("?","value to use when there is no match", :title => "Default Value") %></span>
+    <%= f.text_area :default_value, :class => "span6", :rows => 2, :disabled => f.object.no_default_value %><span class="help-inline"><%= popover("?","value to use when there is no match", :title => "Default Value") %></span>
   <% end -%>
   <%= selectable_f f, :validator_type, options_for_select(LookupKey::VALIDATION_TYPES, f.object.validator_type),
-    { :include_blank => "string"},
+    {},
     { :label => "Type Validator", :class => "medium",
-      :help_inline => popover("?","<dl> <dt>String</dt> <dd>everything goes</dd> <dt>Regexp</dt> <dd>regular expression to verify the value</dd>
-       <dt>List</dt> <dd>comma seperated values, e.g. 80,443<dd> </dt>", :title => "How values are validated").html_safe}
+      :help_inline => popover("?","<dl>
+       <dt>String</dt> <dd>Everything is taken as a string.</dd>
+       <dt>Regexp</dt> <dd>Regular expression to verify the string values.</dd>
+       <dt>Range</dt> <dd>A range of valid values (eg.: <code>0..255</code>, <code>'bar'..'foo'</code>, <code>\"a\"..\"zz\"</code>). Use <code>...</code> to exclude the high bound.</dd>
+       <dt>Boolean</dt> <dd>Common representation of boolean values are accepted.</dd>
+       <dt>Integer</dt> <dd>Integer numbers only, can be negative.</dd>
+       <dt>Real</dt> <dd>Accept any numerical input.</dd>
+       <dt>List</dt> <dd>Accepts a few values, given as comma seperated values, e.g. <code>80,443</code> will accept only two values.<dd>
+       <dt>Array</dt> <dd>A valid JSON or YAML input, that must evaluate to an array.</dd>
+       <dt>Hash</dt> <dd>A valid JSON or YAML input, that must evaluate to an object/map/dict/hash.</dd>
+       <dt>YAML</dt> <dd>Any valid YAML input.</dd>
+       <dt>JSON</dt> <dd>Any valid JSON input.</dd>
+       </dl>
+       ", :title => "How values are validated").html_safe}
   %>
   <%= text_f f, :validator_rule, :label => "Validator constraint", :class => "span6",
-    :help_inline => popover("?","Values to match Type validator, leave blank if its String", :title => "Validator constraint")%>
+    :help_inline => popover("?","Values to match Type validator, only used for \"regexp\" and \"list\"", :title => "Validator constraint")%>
   <%= textarea_f f, :path, :rows => "4", :value => f.object.path, :label => "Order",
     :help_inline => popover("?", "The order in which matchers keys are processed, first match wins.<br>
     You may use multiple attributes as a matcher key, for example, an order of <code>hostgroup, environment</code>
