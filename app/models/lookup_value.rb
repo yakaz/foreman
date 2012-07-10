@@ -21,6 +21,11 @@ class LookupValue < ActiveRecord::Base
     value
   end
 
+  def value_before_type_cast
+    # Use the helper of our parent
+    lookup_key.value_before_type_cast value unless lookup_key.nil?
+  end
+
   private
 
   # TODO: ensures that the match contain only allowed path elements
