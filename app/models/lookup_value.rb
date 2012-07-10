@@ -23,7 +23,9 @@ class LookupValue < ActiveRecord::Base
 
   def value_before_type_cast
     # Use the helper of our parent
-    lookup_key.value_before_type_cast value unless lookup_key.nil?
+    casted = self.value
+    casted = lookup_key.value_before_type_cast casted unless lookup_key.nil?
+    casted
   end
 
   private
@@ -38,6 +40,7 @@ class LookupValue < ActiveRecord::Base
   end
 
   def validate_and_cast_value
+    return true if self.marked_for_destruction?
     begin
       self.value = lookup_key.cast_validate_value self.value
       true
