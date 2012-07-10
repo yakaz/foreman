@@ -93,7 +93,7 @@ class LookupKey < ActiveRecord::Base
       # Remove preceding "---" and indentation, for readability in the form
       rtn.sub! /\A---\s*$\n/, ''
       rtn.gsub! /^#{$1}/, '' if rtn =~ /\A( +)/
-    end
+    end unless validator_type.nil?
     rtn
   end
 
@@ -109,6 +109,38 @@ class LookupKey < ActiveRecord::Base
   def path=(v)
     return if v == array2path(Setting["Default_variables_Lookup_Path"])
     write_attribute(:path, v)
+  end
+
+  # Autodetects the best validator type for the given (correctly typed) value.
+  # JSON and YAML are better undetected, to prevent the simplest strings to match.
+  def self.suggest_validator_type value, default = nil, detect_json_or_yaml = false
+    case value
+    when String
+      begin
+        return "json" if JSON.load value
+      rescue
+        return "yaml" if YAML.load value
+      end if detect_json_or_yaml
+      "string"
+    when Regexp
+      "regexp"
+    when Range
+      "range"
+    when TrueClass, FalseClass
+      "boolean"
+    when Integer
+      "integer"
+    when Float
+      "real"
+    when Set
+      "list"
+    when Array
+      "array"
+    when Hash
+      "hash"
+    else
+      default
+    end
   end
 
   def validator_rule_before_type_cast
@@ -281,7 +313,7 @@ class LookupKey < ActiveRecord::Base
     value
   end
 
-  def load_yaml_or_json value
+  def self.load_yaml_or_json value
     return value unless value.is_a? String
     begin
       JSON.load value

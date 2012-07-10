@@ -122,7 +122,7 @@ class Environment < ActiveRecord::Base
             if pc.errors.empty?
               env.puppetclasses << pc
               parameters.each do |param_str, value|
-                key = LookupKey.create :key => param_str, :puppetclass_id => pc.id, :is_param => true, :default_value => value
+                key = LookupKey.create :key => param_str, :puppetclass_id => pc.id, :is_param => true, :default_value => value, :validator_type => LookupKey.suggest_validator_type(value)
                 if key.errors.empty?
                   pc.lookup_keys << key
                 else
@@ -191,7 +191,7 @@ class Environment < ActiveRecord::Base
             if pc.errors.empty?
               # Add new parameters
               changed_params["new"].each do |param_str, value|
-                key = LookupKey.create :key => param_str, :puppetclass_id => pc.id, :is_param => true, :default_value => value
+                key = LookupKey.create :key => param_str, :puppetclass_id => pc.id, :is_param => true, :default_value => value, :validator_type => LookupKey.suggest_validator_type(value)
                 if key.errors.empty?
                   pc.lookup_keys << key
                 else
