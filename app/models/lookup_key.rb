@@ -84,17 +84,20 @@ class LookupKey < ActiveRecord::Base
   end
 
   def default_value_before_type_cast
-    rtn = default_value
+    value_before_type_cast default_value
+  end
+
+  def value_before_type_cast value
     case validator_type.to_sym
     when :json
-      rtn = JSON.dump rtn
+      value = JSON.dump value
     when :yaml, :array, :hash
-      rtn = YAML.dump rtn
+      value = YAML.dump value
       # Remove preceding "---" and indentation, for readability in the form
-      rtn.sub! /\A---\s*$\n/, ''
-      rtn.gsub! /^#{$1}/, '' if rtn =~ /\A( +)/
+      value.sub! /\A---\s*$\n/, ''
+      value.gsub! /^#{$1}/, '' if value =~ /\A( +)/
     end unless validator_type.nil?
-    rtn
+    value
   end
 
   def no_default_value= value
@@ -157,6 +160,13 @@ class LookupKey < ActiveRecord::Base
     end
   end
 
+  # Returns the casted value, or raises a TypeError
+  def cast_validate_value value
+    method = "cast_value_#{validator_type}".to_sym
+    return value unless self.respond_to? method, true
+    self.send(method, value) rescue raise TypeError
+  end
+
   private
 
   # Generate possible lookup values type matches to a given host
@@ -207,13 +217,6 @@ class LookupKey < ActiveRecord::Base
 
   def as_json(options={})
     super({:only => [:key, :is_param, :description, :default_value, :id]}.merge(options))
-  end
-
-  # Returns the casted value, or raises a TypeError
-  def cast_validate_value value
-    method = "cast_value_#{validator_type}".to_sym
-    return value unless self.respond_to? method, true
-    self.send(method, value) rescue raise TypeError
   end
 
   private
