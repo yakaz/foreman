@@ -88,7 +88,7 @@ class LookupKey < ActiveRecord::Base
     case validator_type.to_sym
     when :json
       rtn = JSON.dump rtn
-    when :yaml, Array, Hash
+    when :yaml, :array, :hash
       rtn = YAML.dump rtn
       # Remove preceding "---" and indentation, for readability in the form
       rtn.sub! /\A---\s*$\n/, ''
@@ -313,7 +313,7 @@ class LookupKey < ActiveRecord::Base
     value
   end
 
-  def self.load_yaml_or_json value
+  def load_yaml_or_json value
     return value unless value.is_a? String
     begin
       JSON.load value
