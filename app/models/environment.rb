@@ -122,7 +122,7 @@ class Environment < ActiveRecord::Base
             if pc.errors.empty?
               env.puppetclasses << pc
               parameters.each do |param_str, value|
-                key = LookupKey.create :key => param_str, :puppetclass_id => pc.id, :is_param => true, :default_value => value, :validator_type => LookupKey.suggest_validator_type(value)
+                key = LookupKey.create :key => param_str, :puppetclass_id => pc.id, :is_param => true, :is_mandatory => value.nil?, :default_value => value, :validator_type => LookupKey.suggest_validator_type(value)
                 if key.errors.empty?
                   pc.lookup_keys << key
                 else
@@ -191,7 +191,7 @@ class Environment < ActiveRecord::Base
             if pc.errors.empty?
               # Add new parameters
               changed_params["new"].each do |param_str, value|
-                key = LookupKey.create :key => param_str, :puppetclass_id => pc.id, :is_param => true, :default_value => value, :validator_type => LookupKey.suggest_validator_type(value)
+                key = LookupKey.create :key => param_str, :puppetclass_id => pc.id, :is_param => true, :is_mandatory => value.nil?, :default_value => value, :validator_type => LookupKey.suggest_validator_type(value)
                 if key.errors.empty?
                   pc.lookup_keys << key
                 else
@@ -200,7 +200,7 @@ class Environment < ActiveRecord::Base
               end if changed_params["new"]
               # Unbind old parameters
               changed_params["obsolete"].each do |param_str, value|
-                key = pc.lookup_keys.find_by_key :key => param_str
+                key = pc.lookup_keys.find_by_key param_str
                 if key.nil?
                   @import_errors << "Unable to find puppet class #{pclass} smart-variable #{param_str} in the foreman database"
                 else
@@ -211,7 +211,7 @@ class Environment < ActiveRecord::Base
               end if changed_params["obsolete"]
               # Update parameters (affects solely the default value)
               changed_params["updated"].each do |param_str, value|
-                key = pc.lookup_keys.find_by_key :key => param_str
+                key = pc.lookup_keys.find_by_key param_str
                 if key.errors.empty?
                   key.default_value = value
                   key.save!
