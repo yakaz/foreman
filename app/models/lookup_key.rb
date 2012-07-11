@@ -67,13 +67,14 @@ class LookupKey < ActiveRecord::Base
   # and no triggered matcher) that should be properly handled by the caller.
   # For non mandatory lookup keys, it means that it should not be mentioned.
   #TODO: use SQL coalesce to minimize the amount of queries
-  def value_for host
+  def value_for host, facts = nil
+    facts = host.facts_hash if facts = nil
     path2matches(host).each do |match|
       if (v = lookup_values.find_by_match(match))
-        return v.value
+        return substitute_facts v.value, host, facts
       end
     end
-    default_value
+    substitute_facts default_value, host, facts
   end
 
   def default_value
@@ -346,6 +347,23 @@ class LookupKey < ActiveRecord::Base
 
   def cast_value_json value
     value = JSON.load value
+  end
+
+  def substitute_facts value, host, facts = nil
+    facts = host.facts_hash if facts.nil?
+    case value
+    when String
+      value.gsub /\$\{([^\}]*)\}/ do |var|
+        var = $1.sub /^::/, ''
+        facts.has_key?(var) ? facts[var] : ''
+      end
+    when Array
+      value.map { |v| substitute_facts v, host, facts }
+    when Hash
+      Hash[value.each.map { |k,v| [substitute_facts(k,host,facts), substitute_facts(v,host,facts)] }]
+    else
+      value
+    end
   end
 
 end
