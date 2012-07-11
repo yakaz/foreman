@@ -673,6 +673,7 @@ class Host < Puppet::Rails::Host
 
   private
   def lookup_keys_fetch class_params, &on_missing_mandatory_key
+    facts_cache = facts_hash
     p = Hash.new {|h,v| h[v] = {}}
     # lookup keys
     if Setting["Enable_Smart_Variables_in_ENC"]
@@ -680,7 +681,7 @@ class Host < Puppet::Rails::Host
       klasses += hostgroup.classes.map(&:id) if hostgroup
       LookupKey.all(:conditions => {:puppetclass_id => klasses.flatten, :is_param => class_params } ).each do |k|
         param = class_params ? p[k.puppetclass.name] : p
-        value = k.value_for(self)
+        value = k.value_for(self, facts_cache)
         if value == nil
           yield k if block_given? and k.is_mandatory
         else
