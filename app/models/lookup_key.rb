@@ -1,4 +1,5 @@
 class LookupKey < ActiveRecord::Base
+  include Authorization
 
   VALIDATION_TYPES = %w( string regexp range boolean integer real list array hash yaml json )
 
@@ -30,6 +31,7 @@ class LookupKey < ActiveRecord::Base
   scoped_search :in => :lookup_values, :on => :value, :rename => :value, :complete_value => true
 
   default_scope :order => 'LOWER(lookup_keys.key)'
+  scope :for, lambda { |c| where('lookup_keys.path LIKE ?', c) }
 
   attr_accessor :no_default_value
 
