@@ -93,4 +93,9 @@ module HostsAndHostgroupsHelper
                :help_inline => "Use this puppet server as an initial Puppet Server or to execute puppet runs" }
   end
 
+  def klass_variables klass, type = "fqdn"
+    return "" if klass.lookup_keys.for(type).empty?
+    link_to_function "S", 'smart_var_dialog', :"data-class-id" => klass.id, :"data-type" => type, :class => "klass-variable"
+   end
+
 end

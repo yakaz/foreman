@@ -168,6 +168,12 @@ function add_puppet_class(item){
 
   $('#selected_classes').append(content);
 
+  var smart_var = $('<a href="#">S</a>');
+  smart_var.attr('onclick', 'smart_var_dialog(this)');
+  smart_var.tooltip();
+
+  $('#selected_classes').append(smart_var);
+
   $("#selected_puppetclass_"+ id).show('highlight', 5000);
   $("#puppetclass_"+ id).addClass('selected-marker').hide();
 }
@@ -180,6 +186,26 @@ function remove_puppet_class(item){
   $('#selected_puppetclass_' + id).remove();
 
   return false;
+}
+
+function smart_var_dialog(item) {
+  var attrs = {};
+  attrs['id'] = $(item).attr('data-class-id');
+  attrs['type'] = $(item).attr('data-type');
+  $.ajax({
+    data:attrs,
+    url: '/status', //$(item).attr('data-url'),
+     success: function(result) {
+       debugger;
+       var box = $(item).closest('.klass-variable');
+       box.addClass('modal fade');
+       $.each(result, function() {
+
+       })
+       box.modal('show');
+//       $('body').append(box);
+    }
+  });
 }
 
 function hostgroup_changed(element) {

@@ -1,4 +1,6 @@
 <%= content_tag_for :li, klass, :selected, :class => cycle('even', 'odd') do %>
   <%= link_to_remove_puppetclass(klass) %>
+  <%= link_to_edit_puppetclass_vars(klass) %>
+  <%= smart_var_for(klass, type) %>
   <%= hidden_field_tag "#{type}[puppetclass_ids][]", klass.id %>
 <% end -%>
