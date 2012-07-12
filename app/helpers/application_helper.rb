@@ -63,11 +63,26 @@ module ApplicationHelper
 
   def link_to_add_puppetclass klass, type
     options = klass.name.size > 28 ? {:'data-original-title'=>klass.name, :rel=>'twipsy'} : {}
-    content_tag(:span, truncate(klass.name, :length => 28), options).html_safe +
+    content_tag(:span, truncate(klass.name, :length => 28), options).html_safe + smart_var_for(klass) +
     link_to_function("", "add_puppet_class(this)",
                        'data-class-id' => klass.id, 'data-type' => type,
                        'data-original-title' => "Click to add #{klass}", :rel => 'twipsy',
                        :class => "ui-icon ui-icon-plus")
+  end
+
+  def smart_var_for klass, type = "fqdn"
+    type = "fqdn" if type == "host"
+    div_for klass, :class => 'klass-variable hide', :'data-type' => "type", :'data-original-title' => 'Click to edit class parameters' do
+      modal_header("Variable") + "<div>here goes a form for #{klass} variables</div>".html_safe
+    end
+  end
+
+  # close and header for modal
+  def modal_header title
+    content_tag :div, :class => 'modal-header' do
+      content_tag :a, :class =>'close', :'data-dismiss' => "modal" "&times;".html_safe
+      content_tag :h3, title
+    end
   end
 
   def check_all_links(form_name=':checkbox')
