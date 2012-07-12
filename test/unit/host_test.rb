@@ -476,4 +476,11 @@ class HostTest < ActiveSupport::TestCase
     assert_equal "myhost1.mydomain.net", host.name
   end
 
+  test "lookup values should always have hosts matcher" do
+    h = hosts(:one)
+    h.lookup_values.build
+    h.valid?
+    assert_equal ["fqdn=#{h}"], h.lookup_values.collect(&:match).uniq
+  end
+
 end

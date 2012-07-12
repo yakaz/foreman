@@ -15,6 +15,9 @@ class Host < Puppet::Rails::Host
   belongs_to :compute_resource
   belongs_to :image
 
+  has_many :lookup_values, :finder_sql => proc { %q(SELECT * FROM lookup_values WHERE (lookup_values.match = 'fqdn=#{self.name}')) }, :dependent => :destroy
+  accepts_nested_attributes_for :lookup_values,   :reject_if => lambda { |a| a[:value].blank? }, :allow_destroy => true
+
   ENC_FORMATS = [ :"puppet 0.23.0+", :"puppet 2.6.5+" ]
   class UnresolvedMandatoryParametersException < RuntimeError
     attr_reader :host, :unresolved_lookup_keys
@@ -174,7 +177,7 @@ class Host < Puppet::Rails::Host
     validates_presence_of :puppet_proxy_id, :if => Proc.new {|h| h.managed? } if SETTINGS[:unattended]
   end
 
-  before_validation :set_hostgroup_defaults, :set_ip_address, :set_default_user, :normalize_addresses, :normalize_hostname
+  before_validation :set_hostgroup_defaults, :set_ip_address, :set_default_user, :normalize_addresses, :normalize_hostname, :force_lookup_value_matcher
   after_validation :ensure_assoications
   before_validation :set_certname, :if => Proc.new {|h| h.managed? and Setting[:use_uuid_for_certificates] } if SETTINGS[:unattended]
 
@@ -800,6 +803,10 @@ class Host < Puppet::Rails::Host
 
   def set_certname
     self.certname = Foreman.uuid if read_attribute(:certname).blank? or new_record?
+  end
+
+  def force_lookup_value_matcher
+    lookup_values.each { |v| v.match = "fqdn=#{fqdn}" }
   end
 
 end
