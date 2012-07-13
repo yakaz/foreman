@@ -28,6 +28,10 @@ class LookupValue < ActiveRecord::Base
     casted
   end
 
+  def as_json(options={})
+    super({:only => [:value, :match, :lookup_key_id, :id]}.merge(options))
+  end
+
   private
 
   # TODO: ensures that the match contain only allowed path elements
@@ -48,10 +52,6 @@ class LookupValue < ActiveRecord::Base
       errors.add(:value, "is invalid")
       false
     end
-  end
-
-  def as_json(options={})
-    super({:only => [:value, :match, :lookup_key_id, :id]}.merge(options))
   end
 
 end
