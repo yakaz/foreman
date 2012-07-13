@@ -161,21 +161,22 @@ function add_puppet_class(item){
   content.append("<input id='" + type +"_puppetclass_ids_' name='" + type +"[puppetclass_ids][]' type='hidden' value=" +id+ ">");
   content.children('span').tooltip();
 
-  var link = content.children('a');
+  var link = content.children('a[data-tag="add-remove"]');
   link.attr('onclick', 'remove_puppet_class(this)');
   link.attr('data-original-title', 'Click to undo adding this class');
   link.removeClass('ui-icon-plus').addClass('ui-icon-minus').tooltip();
 
-  $('#selected_classes').append(content);
-
-  var smart_var = $('<a href="#">S</a>');
+  var smart_var = content.children('a[data-tag="edit"]');
   smart_var.attr('onclick', 'smart_var_dialog(this)');
+  smart_var.removeClass('hide');
   smart_var.tooltip();
 
-  $('#selected_classes').append(smart_var);
+  $('#selected_classes').append(content);
 
   $("#selected_puppetclass_"+ id).show('highlight', 5000);
   $("#puppetclass_"+ id).addClass('selected-marker').hide();
+
+  load_puppet_class_parameters(item);
 }
 
 function remove_puppet_class(item){
@@ -184,28 +185,51 @@ function remove_puppet_class(item){
   $('#puppetclass_' + id).closest('.puppetclass_group').show();
   $('#selected_puppetclass_' + id).children('a').tooltip('hide');
   $('#selected_puppetclass_' + id).remove();
+  $('#puppetclass_' + id + '_params').remove();
 
   return false;
 }
 
-function smart_var_dialog(item) {
-  var attrs = {};
-  attrs['id'] = $(item).attr('data-class-id');
-  attrs['type'] = $(item).attr('data-type');
+function load_puppet_class_parameters(item) {
+  var id = $(item).attr('data-class-id');
+  var target = $('#puppetclass_' + id + '_params');
+  if (target.length > 0) return; // already created (may be loading)
+  var name = $(item).prevAll('span').text();
+  var type = $(item).attr('data-type');
+  var url = $(item).siblings('a[data-tag="edit"]').attr('data-url');
+  if (url == undefined) return; // no parameters
+  var params = $('#puppetclasses_parameters');
+  target = $('<div class="control-group" id="puppetclass_'+id+'_params">'+
+      '<label class="control-label">'+name+'</label>'+
+      '<p id="spinner" class="controls"><img src="/images/spinner.gif" alt="Wait" /> Loading parameters...</p>'+
+      '</div>');
+  params.append(target);
   $.ajax({
-    data:attrs,
-    url: '/status', //$(item).attr('data-url'),
-     success: function(result) {
-       debugger;
-       var box = $(item).closest('.klass-variable');
-       box.addClass('modal fade');
-       $.each(result, function() {
-
-       })
-       box.modal('show');
-//       $('body').append(box);
+    url: url,
+    success: function(result, textstatus, xhr) {
+      target.replaceWith($('<div></div>').html(result));
     }
   });
+}
+
+function smart_var_dialog(item) {
+  var id = $(item).attr('data-class-id');
+  var target = $('#puppetclass_' + id + '_params');
+  if (target.length == 0) return; // no parameters
+  var name = $(item).prevAll('span').text();
+  var type = $(item).attr('data-type');
+  var placeholder = $('<div class="control-group">'+
+      '<label class="control-label">'+name+'</label>'+
+      '<div class="controls"><img src="/images/edit.png" alt="Currently under edition..." /></div>'+
+      '</div>');
+  target.replaceWith(placeholder);
+  var box = $('<div class="modal-header modal fade"><a class="close" data-dismiss="modal">&times;</a><h3>'+$(item).prevAll('span').text()+'</h3></div>');
+  box.on('hide', function() {
+    placeholder.replaceWith(target);
+    placeholder.remove();
+  });
+  box.append(target.detach());
+  box.modal('show');
 }
 
 function hostgroup_changed(element) {

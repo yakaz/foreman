@@ -58,6 +58,7 @@ module ApplicationHelper
     content_tag(:span, truncate(klass.name, :length => 28), options).html_safe +
     link_to_function("","remove_puppet_class(this)", :'data-class-id'=>klass.id,
                      :'data-original-title'=>"Click to remove #{klass}", :rel=>'twipsy',
+                     :'data-tag'=>'add-remove',
                      :class=>"ui-icon ui-icon-minus")
   end
 
@@ -65,14 +66,39 @@ module ApplicationHelper
     options = klass.name.size > 28 ? {:'data-original-title'=>klass.name, :rel=>'twipsy'} : {}
     content_tag(:span, truncate(klass.name, :length => 28), options).html_safe + smart_var_for(klass) +
     link_to_function("", "add_puppet_class(this)",
-                       'data-class-id' => klass.id, 'data-type' => type,
-                       'data-original-title' => "Click to add #{klass}", :rel => 'twipsy',
+                       :'data-class-id' => klass.id, :'data-type' => type,
+                       :'data-original-title' => "Click to add #{klass}", :rel => 'twipsy',
+                       :'data-tag' => 'add-remove',
                        :class => "ui-icon ui-icon-plus")
+  end
+
+  def add_html_classes options, classes
+    options = options.dup unless options.nil?
+    options ||= {}
+    options[:class] = options[:class].dup if options.has_key? :class
+    options[:class] ||= []
+    options[:class] = options[:class].split /\s+/ if options[:class].is_a? String
+    classes = classes.split /\s+/ if classes.is_a? String
+    options[:class] += classes
+    options
+  end
+
+  def link_to_edit_puppetclass_vars klass, host, type = "fqdn", options = {}
+    return if klass.lookup_keys.empty?
+    type = "fqdn" if type == "host"
+    options = add_html_classes options, "ui-icon ui-icon-wrench"
+    link_to_function('', 'smart_var_dialog(this)',
+                       options.merge(
+                         :'data-class-id' => klass.id, :'data-type' => type,
+                         :'data-original-title' => "Click to edit class parameters", :rel => 'twipsy',
+                         :'data-url' => url_for(hash_for_host_puppetclass_parameters_path(:host_id => host.id, :puppetclass_id => klass.id)),
+                         :'data-tag' => 'edit'
+                       ))
   end
 
   def smart_var_for klass, type = "fqdn"
     type = "fqdn" if type == "host"
-    div_for klass, :class => 'klass-variable hide', :'data-type' => "type", :'data-original-title' => 'Click to edit class parameters' do
+    content_tag :div, :class => 'klass-variable hide', :'data-type' => type, :'data-original-title' => 'Click to edit class parameters' do
       modal_header("Variable") + "<div>here goes a form for #{klass} variables</div>".html_safe
     end
   end
