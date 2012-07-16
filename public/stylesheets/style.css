@@ -290,11 +290,7 @@ tr.open span.expander {background-image: url(../images/bullet_toggle_minus.png);
 }
 
 .pagination ul{ float: right;}
-.modal-loading {
-  position: relative;
-  top: 50%;
-  left: 50%;
-}
+@import url("modals.css");
 
 select{padding: initial;}
 
