@@ -82,7 +82,7 @@ class LookupKey < ActiveRecord::Base
     obs_matcher_block = options[:obs_matcher_block]
     facts = host.facts_hash if facts = nil
     used_matcher = nil
-    original_value = nil
+    original_value = default_value
     path2matches(host).each do |match|
       if (v = lookup_values.find_by_match(match))
         original_value = v.value
@@ -91,7 +91,6 @@ class LookupKey < ActiveRecord::Base
         break
       end
     end
-    original_value = default_value
     v = substitute_facts original_value, host, facts, on_unavailable_fact
     obs_matcher_block.call({:host => host, :used_matcher => used_matcher, :value => {:original => original_value, :final => v}}) unless obs_matcher_block.nil?
     v
