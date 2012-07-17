@@ -56,8 +56,21 @@
 
     <div class="tab-pane"  id="params">
       <h6>Puppet classes Parameters</h6>
-      <p></p>
-      <%= render "puppetclasses/classes_parameters", { :obj => @host } %>
+      <table class="table table-condensed" id="puppetclasses_parameters">
+        <thead>
+          <tr>
+            <th>Puppet class</th>
+            <th>Name</th>
+            <th>Value</th>
+            <th>Type</th>
+            <th>Matcher</th>
+            <th>Override</th>
+          </tr>
+        </thead>
+        <tbody>
+          <%= render "puppetclasses/classes_parameters", { :obj => @host } %>
+        </tbody>
+      </table>
 
       <h6>Included Parameters via inheritance</h6>
       <p></p>

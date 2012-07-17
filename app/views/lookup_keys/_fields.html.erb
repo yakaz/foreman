@@ -15,9 +15,9 @@
   <%= text_f f, :description %>
   <%= field f, :default_value do -%>
     <%= label_tag('', :class=>'checkbox') do -%>
-      <%= f.check_box :no_default_value, :onchange => "toggleTextFieldEmptyDisabled(getSiblingField(this, 'default_value'), isFieldChecked(this));" %> None
+      <%= f.check_box :no_default_value, :onchange => "toggleTextFieldEmptyDisabled(getSiblingField(this, 'default_value'), isFieldChecked(this));", :'data-onready' => (f.object.no_default_value ? '$(this).attr("checked", true);$(this).trigger("change");' : '') %> None
     <% end -%>
-    <%= f.text_area :default_value, :class => "span6", :rows => 2, :disabled => f.object.no_default_value %><span class="help-inline"><%= popover("?","value to use when there is no match", :title => "Default Value") %></span>
+    <%= f.text_area :default_value, :class => "span6", :rows => 2 %><span class="help-inline"><%= popover("?","value to use when there is no match", :title => "Default Value") %></span>
   <% end -%>
   <%= selectable_f f, :validator_type, options_for_select(LookupKey::VALIDATION_TYPES, f.object.validator_type),
     {},

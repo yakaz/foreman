@@ -35,6 +35,10 @@ function onContentLoad(){
   $('a[rel="popover"]').popover();
   $('[rel="twipsy"]').tooltip();
   $('*[title]').not('*[rel]').tooltip();
+
+  $('[data-onready!=""]').each(function(){
+    eval($(this).attr('data-onready'));
+  });
 }
 
 function isFieldChecked(field) {
