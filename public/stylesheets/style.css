@@ -290,7 +290,6 @@ tr.open span.expander {background-image: url(../images/bullet_toggle_minus.png);
 }
 
 .pagination ul{ float: right;}
-@import url("modals.css");
 
 select{padding: initial;}
 
@@ -314,6 +313,7 @@ margin-left:0;margin-bottom:18px;list-style:none;display: inline;
 
 .table th{background: rgba(0, 0, 0, 0.08);}
 
+.table.hide-first-col th:first-child, .table.hide-first-col td:first-child{display:none;}
 .delete{color: #b94a48 !important;}
 .invalid{color: #b97776 !important;}
 a.alternative{color: #75A !important;}

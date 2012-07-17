@@ -34,6 +34,10 @@ function onContentLoad(){
   //set the tooltips
   $('a[rel="popover"]').popover();
   $('[rel="twipsy"]').tooltip();
+
+  $('[data-onready!=""]').each(function(){
+    eval($(this).attr('data-onready'));
+  });
 }
 
 function isFieldChecked(field) {

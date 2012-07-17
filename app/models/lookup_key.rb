@@ -68,15 +68,33 @@ class LookupKey < ActiveRecord::Base
   # A nil return value is an error for mandatory lookup keys (no default value
   # and no triggered matcher) that should be properly handled by the caller.
   # For non mandatory lookup keys, it means that it should not be mentioned.
+  # params:
+  #   +host: The considered Host instance.
+  #   +facts+: Cached facts hash, or nil.
+  #   +options+: A hash containing the following, optional keys:
+  #     +on_unavailable_fact+: Callback called upon unknown facts. See +substitute_facts+.
+  #     +obs_matcher_block+: Callback to notify with extra information.
+  #                          It is given a hash having the following structure:
+  #                          +{ :host => #<Host>, :used_matched => "fact=value", :value => {:original => ..., :final => ...} }+
   #TODO: use SQL coalesce to minimize the amount of queries
-  def value_for host, facts = nil
+  def value_for host, facts = nil, options = {}
+    on_unavailable_fact = options[:on_unavailable_fact]
+    obs_matcher_block = options[:obs_matcher_block]
     facts = host.facts_hash if facts = nil
+    used_matcher = nil
+    original_value = nil
     path2matches(host).each do |match|
       if (v = lookup_values.find_by_match(match))
-        return substitute_facts v.value, host, facts
+        original_value = v.value
+        used_matcher = match
+        v = substitute_facts v.value, host, facts, on_unavailable_fact
+        break
       end
     end
-    substitute_facts default_value, host, facts
+    original_value = default_value
+    v = substitute_facts original_value, host, facts, on_unavailable_fact
+    obs_matcher_block.call({:host => host, :used_matcher => used_matcher, :value => {:original => original_value, :final => v}}) unless obs_matcher_block.nil?
+    v
   end
 
   def default_value
@@ -95,6 +113,7 @@ class LookupKey < ActiveRecord::Base
     when :json
       value = JSON.dump value
     when :yaml, :array, :hash
+      return 'null' if value.nil?
       value = YAML.dump value
       # Remove preceding "---" and indentation, for readability in the form
       value.sub! /\A---\s*$\n/, ''
@@ -351,18 +370,29 @@ class LookupKey < ActiveRecord::Base
     value = JSON.load value
   end
 
-  def substitute_facts value, host, facts = nil
+  # params:
+  #   +value+: The value to perform substitutions onto.
+  #   +host+: The considered Host instance.
+  #   +facts+: The cached facts hash, or nil.
+  #   +on_unavailable_fact+: Called when facing an unknown fact.
+  #                          It is given, in order: the fact name, the Host instance.
+  #                          If not nil or false, the return value will be used for the missing value.
+  def substitute_facts value, host, facts = nil, on_unavailable_fact = nil
     facts = host.facts_hash if facts.nil?
     case value
     when String
       value.gsub /\$\{([^\}]*)\}/ do |var|
         var = $1.sub /^::/, ''
-        facts.has_key?(var) ? facts[var] : ''
+        if facts.has_key?(var)
+          facts[var]
+        else
+          on_unavailable_fact.call(var, host) || '' if on_unavailable_fact
+        end
       end
     when Array
-      value.map { |v| substitute_facts v, host, facts }
+      value.map { |v| substitute_facts v, host, facts, on_unavailable_fact }
     when Hash
-      Hash[value.each.map { |k,v| [substitute_facts(k,host,facts), substitute_facts(v,host,facts)] }]
+      Hash[value.each.map { |k,v| [substitute_facts(k,host,facts,on_unavailable_fact), substitute_facts(v,host,facts,on_unavailable_fact)] }]
     else
       value
     end
