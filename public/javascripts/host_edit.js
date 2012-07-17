@@ -227,11 +227,13 @@ function smart_var_dialog(item) {
     target.find('tr[id^="puppetclass_"][id*="_params\\["]').removeClass('hide');
     target.removeClass('modal-body');
     placeholder.replaceWith(target);
-    placeholder.remove();
+    // Apparently not needed here... //target.find('a[rel="popover"]').popover(); // fix .data() gone when moving the target
     box.remove();
   });
-  box.append(target.detach());
-  target.addClass('modal-body');
+  var body = $('<div class="modal-body"></div>');
+  body.append(target);
+  target.find('a[rel="popover"]').popover(); // fix .data() gone when moving the target
+  box.append(body);
   box.modal('show');
 }
 

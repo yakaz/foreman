@@ -9,12 +9,29 @@
       <%
         name = key.key
         infos = { :used_matcher => nil }
-        value = key.value_before_type_cast key.value_for host, host_facts, :obs_matcher_block => Proc.new { |h| infos = h }
+        value_orig = key.value_for host, host_facts, :obs_matcher_block => Proc.new { |h| infos = h }
+        value = key.value_before_type_cast value_orig
         origin = '(default value)'
         origin = infos[:used_matcher] unless infos[:used_matcher].nil?
+        diagnostic_class = []
+        diagnostic_helper = nil
+        if value_orig.nil?
+          if key.is_mandatory
+            diagnostic_class << 'error'
+            diagnostic_helper = popover 'Error', 'Mandatory parameter without value.<br/><b>Please override!</b>'
+          else
+            diagnostic_class << 'warning'
+            diagnostic_helper = popover 'Warning', 'Optional parameter without value.<br/><i>Won\'t be given to Puppet.</i>'
+          end
+        end
       -%>
       <td><%= content_tag :span, name, :class => "span2" %></td>
-      <td><%= text_area_tag "value_#{name}", value, :rows => 2, :class => "span4", :disabled => true %></td>
+      <td>
+        <%= content_tag :div, :class => ['control-group'] + diagnostic_class do -%>
+          <%= text_area_tag "value_#{name}", value, :rows => 2, :class => ['span4'], :disabled => true %>
+          <%= diagnostic_helper %>
+        <% end -%>
+      </td>
       <td><%= content_tag :span, key.validator_type, :class => "span1" %></td>
       <td><%= content_tag :span, origin, :class => "span2" %></td>
       <td><span class="help-inline">
