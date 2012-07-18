@@ -175,7 +175,7 @@ function add_puppet_class(item){
   $("#selected_puppetclass_"+ id).show('highlight', 5000);
   $("#puppetclass_"+ id).addClass('selected-marker').hide();
 
-  load_puppet_class_parameters(item);
+  load_puppet_class_parameters(link);
 }
 
 function remove_puppet_class(item){
@@ -184,6 +184,7 @@ function remove_puppet_class(item){
   $('#puppetclass_' + id).closest('.puppetclass_group').show();
   $('#selected_puppetclass_' + id).children('a').tooltip('hide');
   $('#selected_puppetclass_' + id).remove();
+  $('#selected_puppetclass_' + id+' > [data-tag="edit"]').removeClass('error').removeClass('warning');
   $('#puppetclass_' + id + '_params_loading').remove();
   $('[id^="puppetclass_' + id + '_params\\["]').remove();
 
@@ -191,12 +192,13 @@ function remove_puppet_class(item){
 }
 
 function load_puppet_class_parameters(item) {
-  var id = $(item).attr('data-class-id');
+  var $item = $(item);
+  var id = $item.attr('data-class-id');
   if ($('#puppetclass_' + id + '_params_loading').length > 0) return; // already loading
   if ($('[id^="#puppetclass_' + id + '_params\\["]').length > 0) return; // already loaded
-  var name = $(item).prevAll('span').text();
-  var type = $(item).attr('data-type');
-  var url = $(item).siblings('a[data-tag="edit"]').attr('data-url');
+  var name = $item.prevAll('span').text();
+  var type = $item.attr('data-type');
+  var url = $item.siblings('a[data-tag="edit"]').attr('data-url');
   if (url == undefined) return; // no parameters
   var target = $('#puppetclasses_parameters');
   var placeholder = $('<tr id="puppetclass_'+id+'_params_loading">'+
@@ -210,21 +212,28 @@ function load_puppet_class_parameters(item) {
       var params = $(result);
       placeholder.replaceWith(params);
       params.find('a[rel="popover"]').popover();
+      var link = $item.siblings('[data-tag="edit"]');
+      link.removeClass('warning').removeClass('error');
+      if (params.find('.error').length > 0)
+        link.addClass('error');
+      else if (params.find('.warning').length > 0)
+        link.addClass('warning');
     }
   });
 }
 
 function smart_var_dialog(item) {
-  var id = $(item).attr('data-class-id');
+  var $item = $(item);
+  var id = $item.attr('data-class-id');
   var target = $('#puppetclasses_parameters');
-  var name = $(item).prevAll('span').text();
-  var type = $(item).attr('data-type');
+  var name = $item.prevAll('span').text();
+  var type = $item.attr('data-type');
   var placeholder = $('<div><img src="/images/edit.png"/>Currently under edition...</div>');
   target.replaceWith(placeholder);
   target.addClass('hide-first-col');
   target.find('tr[id^="puppetclass_"][id*="_params\\["]').addClass('hide');
   target.find('tr[id^="puppetclass_'+id+'_params\\["]').removeClass('hide');
-  var box = $('<div class="modal scrollable modal10 fade"><a class="close" data-dismiss="modal">&times;</a><h3 class="modal-header">'+$(item).prevAll('span').text()+'</h3></div>');
+  var box = $('<div class="modal scrollable modal10 fade"><a class="close" data-dismiss="modal">&times;</a><h3 class="modal-header">'+$item.prevAll('span').text()+'</h3></div>');
   box.on('hidden', function() {
     target.removeClass('hide-first-col');
     target.find('tr[id^="puppetclass_"][id*="_params\\["]').removeClass('hide');
@@ -464,4 +473,14 @@ function onHostEditLoad(){
 
   $('#image_selection').appendTo($('#image_provisioning'));
   $('#params-tab').on('shown', function(){mark_params_override()});
+
+  $('[id^="selected_puppetclass_"] > [data-tag="edit"]').each(function(){
+    var $e = $(this);
+    var id = $e.attr('data-class-id');
+    var params = $('[id^="puppetclass_'+id+'_params\\["]');
+    if (params.find('.error').length > 0)
+      $e.addClass('error');
+    else if (params.find('.warning').length > 0)
+      $e.addClass('warning');
+  })
 }

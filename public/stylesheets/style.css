@@ -19,6 +19,13 @@
     background-position: -80px -128px;
 }
 
+.ui-icon.error{
+    background-image: url('../images/ui-icons_cd0a0a_256x240.png');
+}
+.ui-icon.warning{
+    background-image: url('../images/ui-icons_f6cf3b_256x240.png');
+}
+
 .ui-autocomplete-completed {
     color: #aaa;
     font-weight: lighter;
