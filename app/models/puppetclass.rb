@@ -24,6 +24,7 @@ class Puppetclass < ActiveRecord::Base
   scoped_search :in => :hostgroups,   :on => :name, :complete_value => :true, :rename => "hostgroup"
   scoped_search :in => :hosts, :on => :name, :complete_value => :true, :rename => "host", :ext_method => :search_by_host, :only_explicit => true
 
+  serialize :modeline, Hash
 
   def self.from_param param
     find_by_name param

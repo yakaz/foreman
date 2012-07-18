@@ -17,13 +17,13 @@
             :host => obj } %>
       <% else -%>
         <% obj.puppetclasses.each do |klass| %>
-          <li data-original-title="Not authorized to edit classes" rel="twipsy" style='color:black;'><%= h klass.name %></li>
+          <li data-original-title="Not authorized to edit classes" rel="twipsy" style='color:black;'<% if klass.modeline.has_key?("internal-class") %>class="internal_puppetclass"<% end %>><span><%= h klass.name %></span></li>
         <% end -%>
       <% end -%>
     </ul>
     <ul>
       <% parent_classes(obj).each do |klass| %>
-        <li data-original-title="included already from host group" rel="twipsy" style='color:black;'><%= h klass.name %></li>
+        <li data-original-title="included already from host group" rel="twipsy" style='color:black;'<% if klass.modeline.has_key?("internal-class") %>class="internal_puppetclass"<% end %>><span><%= h klass.name %></span></li>
       <% end -%>
     </ul>
   </div>
@@ -32,10 +32,19 @@
     <h3>Available Classes</h3>
     <div class='control-group'>
       <input placeholder="Filter classes" class="search-query" onkeyup="filter_puppet_classes(this);" type='text'>
+      <%= link_to_function(
+        icon_text("list-alt", ""),
+        "toggle_internal_puppetclasses('#available_puppet_klasses')",
+        {
+          :class => "btn",
+          :'data-original-title' => "Toggle display of internal Puppet classes",
+          :rel => 'twipsy'
+        }) %>
     </div>
-    <div class="row">
+    <div id="available_puppet_klasses" class="row">
       <%= render "puppetclasses/classes",
-        :puppetclasses => (defined?(@environment) ? @environment.puppetclasses : Puppetclass.all), :selected_puppet_classes => obj.all_puppetclasses,
+	:puppetclasses => (defined?(@environment) ? @environment.puppetclasses : Puppetclass.all),
+	:selected_puppet_classes => obj.all_puppetclasses,
         :type => obj.class.to_s.downcase
       %>
     </div>

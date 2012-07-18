@@ -1,4 +1,4 @@
-<%= content_tag_for :li, klass, :selected, :class => cycle('even', 'odd') do %>
+<%= content_tag_for :li, klass, :selected, :class => cycle('even', 'odd') + (klass.modeline.has_key?("internal-class") ? ' internal_puppetclass' : '') do %>
   <%= link_to_remove_puppetclass(klass) %>
   <%= link_to_edit_puppetclass_vars(klass, host) %>
   <%= smart_var_for(klass, type) %>

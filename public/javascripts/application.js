@@ -365,3 +365,57 @@ function update_puppetclasses(element) {
     }
   })
 }
+function toggle_internal_puppetclasses(element) {
+  var odd_or_even;
+  var action;
+
+  /* Determine the action to perform bases on the shown/hidden status of
+   * the first .puppetclass. */
+  var first = $(element).find('.internal_puppetclass').filter(':first');
+  if (!first)
+    return;
+  var action = first.is(':hidden') ? 'show' : 'hide';
+
+  /* Loop on .puppetclass's to show/hide them. At the same time, we
+   * update the odd/even class. */
+  $(element).find('.puppetclass_group').each(function() {
+    odd_or_even = 'even';
+
+    $(this).find('.puppetclass').each(function() {
+      if ($(this).hasClass('selected_puppetclass') || $(this).hasClass('selected-marker')) {
+        /* Skip selected classes: they must remain hidden. */
+        return;
+      }
+
+      if ($(this).hasClass('internal_puppetclass')) {
+        /* Toggle internal classes. */
+        if (action === 'show' && $(this).is(':hidden')) {
+          $(this).show();
+        } else if (action === 'hide' && !$(this).is(':hidden')) {
+          $(this).hide();
+        }
+      }
+
+      if (!$(this).is(':hidden')) {
+        /* This class is visible, update its odd/even style. */
+        if (odd_or_even === 'odd') {
+          if ($(this).hasClass('even')) {
+            $(this).removeClass('even');
+            $(this).addClass('odd');
+          } else if (!$(this).hasClass('odd')) {
+            $(this).addClass('odd');
+          }
+          odd_or_even = 'even';
+        } else {
+          if ($(this).hasClass('odd')) {
+            $(this).removeClass('odd');
+            $(this).addClass('even');
+          } else if (!$(this).hasClass('even')) {
+            $(this).addClass('even');
+          }
+          odd_or_even = 'odd';
+        }
+      }
+    });
+  });
+}

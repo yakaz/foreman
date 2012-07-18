@@ -27,7 +27,10 @@ class Environment < ActiveRecord::Base
       HashWithIndifferentAccess[proxy.environments.map { |e|
         [e, HashWithIndifferentAccess[proxy.classes(e).map {|k|
           klass = k.keys.first
-          [klass, k[klass]["params"]]
+          [klass, {
+            :params   => k[klass]["params"],
+            :modeline => k[klass]["modeline"] ? ActiveSupport::JSON.decode(k[klass]["modeline"]) : {}
+          }]
         }]]
       }]
     end
@@ -40,7 +43,14 @@ class Environment < ActiveRecord::Base
       disk_tree.default = []
 
       # Create a representation of the foreman configuration where the environments are hash keys and the classes are sorted lists
-      db_tree           = HashWithIndifferentAccess[Environment.all.map { |e| [e.name, HashWithIndifferentAccess[e.puppetclasses.all.map {|pc| [pc.name, HashWithIndifferentAccess[pc.lookup_keys.all.map {|k| [k.key, k.default_value] if k.is_param}.compact]] }]] }]
+      db_tree           = HashWithIndifferentAccess[Environment.all.map { |e|
+        [e.name, HashWithIndifferentAccess[e.puppetclasses.all.map {|pc|
+          [pc.name, {
+            :params   => HashWithIndifferentAccess[pc.lookup_keys.all.map {|k| [k.key, k.default_value] if k.is_param}.compact],
+            :modeline => pc.modeline
+          }]
+        }]]
+      }]
       db_tree.default   = []
 
       changes = { "new" => { }, "obsolete" => { }, "updated" => { } }
@@ -62,17 +72,26 @@ class Environment < ActiveRecord::Base
         env = Environment.find_by_name(env_str)
         db_params = db_tree[env_str] # read the already fetched parameters
         updated_classes = HashWithIndifferentAccess[
-          db_params.each.map do |klass, params|
-            param_updates = {}
-            disk_params = disk_tree[env_str][klass]
-            if disk_params
+          db_params.map do |klass, attributes|
+            disk_attributes = disk_tree[env_str][klass]
+            if disk_attributes
+              actions = {}
+              # Compare parameters.
+              params = attributes[:params]
+              disk_params = disk_attributes[:params]
+              param_updates = {}
               surplus_db_params = params.dup.delete_if { |p,v| disk_params.has_key? p }
               param_updates['obsolete'] = surplus_db_params if surplus_db_params.size > 0
               extra_disk_params = disk_params.dup.delete_if { |p,v| params.has_key? p }
               param_updates['new'] = extra_disk_params if extra_disk_params.size > 0
               updated_params = HashWithIndifferentAccess[disk_params.select { |p,v| (params.has_key? p) && (params[p] != v) }]
               param_updates['updated'] = updated_params if updated_params.size > 0
-              [ klass, param_updates ] if param_updates.size > 0
+              actions[:params] = param_updates if param_updates.size > 0
+              # Compare modelines.
+              modeline = attributes[:modeline]
+              disk_modeline = disk_attributes[:modeline]
+              actions[:modeline] = disk_modeline if modeline != disk_modeline
+              [ klass, actions ] if actions.size > 0
             end
           end.compact
         ]
@@ -117,10 +136,11 @@ class Environment < ActiveRecord::Base
             @import_errors << "Failed to eval #{changed[:new][env_str]} as a hash:" + e.message
             next
           end
-          pclasses.each do |pclass,parameters|
-            pc = Puppetclass.find_or_create_by_name :name => pclass
+          pclasses.each do |pclass,attributes|
+            pc = Puppetclass.find_or_create_by_name pclass
             if pc.errors.empty?
               env.puppetclasses << pc
+              parameters = attributes["params"]
               parameters.each do |param_str, value|
                 key = LookupKey.create :key => param_str, :puppetclass_id => pc.id, :is_param => true, :is_mandatory => value.nil?, :default_value => value, :validator_type => LookupKey.suggest_validator_type(value)
                 if key.errors.empty?
@@ -128,6 +148,10 @@ class Environment < ActiveRecord::Base
                 else
                   @import_errors += key.errors.map(&:to_s)
                 end
+              end
+              if attributes.has_key?("modeline")
+                pc.modeline = attributes["modeline"]
+                pc.save!
               end
             else
               @import_errors += pc.errors.map(&:to_s)
@@ -175,7 +199,7 @@ class Environment < ActiveRecord::Base
         end
       end if changed[:obsolete]
 
-      # Update puppet classes with new parameters
+      # Update puppet classes with new parameters or modeline
       for env_str in changed[:updated].keys
         env = Environment.find_by_name env_str
         if env.valid? and !env.new_record?
@@ -186,39 +210,46 @@ class Environment < ActiveRecord::Base
             next
           end
           # Process each parameter update
-          pclasses.each do |pclass, changed_params|
+          pclasses.each do |pclass, attributes|
             pc = Puppetclass.find_by_name pclass
             if pc.errors.empty?
-              # Add new parameters
-              changed_params["new"].each do |param_str, value|
-                key = LookupKey.create :key => param_str, :puppetclass_id => pc.id, :is_param => true, :is_mandatory => value.nil?, :default_value => value, :validator_type => LookupKey.suggest_validator_type(value)
-                if key.errors.empty?
-                  pc.lookup_keys << key
-                else
-                  @import_errors += key.errors.map(&:to_s)
-                end
-              end if changed_params["new"]
-              # Unbind old parameters
-              changed_params["obsolete"].each do |param_str, value|
-                key = pc.lookup_keys.find_by_key param_str
-                if key.nil?
-                  @import_errors << "Unable to find puppet class #{pclass} smart-variable #{param_str} in the foreman database"
-                else
-                  #pc.lookup_keys.delete key
-                  key.puppetclass_id = nil
-                  key.save!
-                end
-              end if changed_params["obsolete"]
-              # Update parameters (affects solely the default value)
-              changed_params["updated"].each do |param_str, value|
-                key = pc.lookup_keys.find_by_key param_str
-                if key.errors.empty?
-                  key.default_value = value
-                  key.save!
-                else
-                  @import_errors += key.errors.map(&:to_s)
-                end
-              end if changed_params["updated"]
+              changed_params = attributes["params"]
+              if changed_params
+                # Add new parameters
+                changed_params["new"].each do |param_str, value|
+                  key = LookupKey.create :key => param_str, :puppetclass_id => pc.id, :is_param => true, :is_mandatory => value.nil?, :default_value => value, :validator_type => LookupKey.suggest_validator_type(value)
+                  if key.errors.empty?
+                    pc.lookup_keys << key
+                  else
+                    @import_errors += key.errors.map(&:to_s)
+                  end
+                end if changed_params["new"]
+                # Unbind old parameters
+                changed_params["obsolete"].each do |param_str, value|
+                  key = pc.lookup_keys.find_by_key param_str
+                  if key.nil?
+                    @import_errors << "Unable to find puppet class #{pclass} smart-variable #{param_str} in the foreman database"
+                  else
+                    #pc.lookup_keys.delete key
+                    key.puppetclass_id = nil
+                    key.save!
+                  end
+                end if changed_params["obsolete"]
+                # Update parameters (affects solely the default value)
+                changed_params["updated"].each do |param_str, value|
+                  key = pc.lookup_keys.find_by_key param_str
+                  if key.errors.empty?
+                    key.default_value = value
+                    key.save!
+                  else
+                    @import_errors += key.errors.map(&:to_s)
+                  end
+                end if changed_params["updated"]
+              end
+              if attributes.has_key?("modeline")
+                # Update modeline.
+                pc.modeline = attributes["modeline"]
+              end
               pc.save!
             else
               @import_errors += pc.errors.map(&:to_s)
@@ -228,7 +259,6 @@ class Environment < ActiveRecord::Base
           @import_errors << "Unable to find or create environment #{env_str} in the foreman database"
         end
       end if changed[:updated]
-
 
       @import_errors
     end

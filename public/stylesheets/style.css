@@ -218,7 +218,9 @@ div.flash.notice {
   float: right;
   margin-right: 10px;
 }
-
+.internal_puppetclass span {
+  color: #999;
+}
 #title_action {
   margin-top: -9px;
 }
