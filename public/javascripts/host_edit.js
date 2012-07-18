@@ -184,29 +184,32 @@ function remove_puppet_class(item){
   $('#puppetclass_' + id).closest('.puppetclass_group').show();
   $('#selected_puppetclass_' + id).children('a').tooltip('hide');
   $('#selected_puppetclass_' + id).remove();
-  $('#puppetclass_' + id + '_params').remove();
+  $('#puppetclass_' + id + '_params_loading').remove();
+  $('[id^="puppetclass_' + id + '_params\\["]').remove();
 
   return false;
 }
 
 function load_puppet_class_parameters(item) {
   var id = $(item).attr('data-class-id');
-  var target = $('#puppetclass_' + id + '_params');
-  if (target.length > 0) return; // already created (may be loading)
+  if ($('#puppetclass_' + id + '_params_loading').length > 0) return; // already loading
+  if ($('[id^="#puppetclass_' + id + '_params\\["]').length > 0) return; // already loaded
   var name = $(item).prevAll('span').text();
   var type = $(item).attr('data-type');
   var url = $(item).siblings('a[data-tag="edit"]').attr('data-url');
   if (url == undefined) return; // no parameters
-  var params = $('#puppetclasses_parameters');
-  target = $('<div class="control-group" id="puppetclass_'+id+'_params">'+
-      '<label class="control-label">'+name+'</label>'+
-      '<p id="spinner" class="controls"><img src="/images/spinner.gif" alt="Wait" /> Loading parameters...</p>'+
-      '</div>');
-  params.append(target);
+  var target = $('#puppetclasses_parameters');
+  var placeholder = $('<tr id="puppetclass_'+id+'_params_loading">'+
+      '<td>'+name+'</td>'+
+      '<td colspan="5"><p><img src="/images/spinner.gif" alt="Wait" /> Loading parameters...</p></td>'+
+      '</tr>');
+  target.append(placeholder);
   $.ajax({
     url: url,
     success: function(result, textstatus, xhr) {
-      target.replaceWith($('<div></div>').html(result));
+      var params = $(result);
+      placeholder.replaceWith(params);
+      params.find('a[rel="popover"]').popover();
     }
   });
 }
