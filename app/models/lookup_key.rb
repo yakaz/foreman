@@ -87,7 +87,6 @@ class LookupKey < ActiveRecord::Base
       if (v = lookup_values.find_by_match(match))
         original_value = v.value
         used_matcher = match
-        v = substitute_facts v.value, host, facts, on_unavailable_fact
         break
       end
     end
@@ -375,7 +374,7 @@ class LookupKey < ActiveRecord::Base
   #   +facts+: The cached facts hash, or nil.
   #   +on_unavailable_fact+: Called when facing an unknown fact.
   #                          It is given, in order: the fact name, the Host instance.
-  #                          If not nil or false, the return value will be used for the missing value.
+  #                          If not nil, the return value will be used for the missing value.
   def substitute_facts value, host, facts = nil, on_unavailable_fact = nil
     facts = host.facts_hash if facts.nil?
     case value
@@ -385,7 +384,7 @@ class LookupKey < ActiveRecord::Base
         if facts.has_key?(var)
           facts[var]
         else
-          on_unavailable_fact.call(var, host) || '' if on_unavailable_fact
+          (on_unavailable_fact.call(var, host).to_s if on_unavailable_fact) || ''
         end
       end
     when Array
