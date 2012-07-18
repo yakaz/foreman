@@ -80,7 +80,7 @@ class LookupKey < ActiveRecord::Base
   def value_for host, facts = nil, options = {}
     on_unavailable_fact = options[:on_unavailable_fact]
     obs_matcher_block = options[:obs_matcher_block]
-    facts = host.facts_hash if facts = nil
+    facts = host.facts_hash if facts == nil
     used_matcher = nil
     original_value = default_value
     path2matches(host).each do |match|
