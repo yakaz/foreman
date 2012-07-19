@@ -3,7 +3,6 @@
   :collection => obj.puppetclasses, :as => :klass,
   :locals => { :type => obj.class.to_s.downcase,
     :host => obj, :host_facts => cached_facts } %>
-  <p></p>
 <%= render :partial => "puppetclasses/class_parameters",
   :collection => parent_classes(obj), :as => :klass,
   :locals => { :type => obj.class.to_s.downcase,

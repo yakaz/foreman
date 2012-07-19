@@ -87,12 +87,27 @@ function mark_params_override(){
       }
     })
   })
+  $('#puppetclasses_parameters .override-param').removeClass('override-param');
+  $('#puppetclasses_parameters [data-tag=override]').show();
+  $('#parameters').find('[data-property=class]:visible').each(function(){
+    var klass = $(this).val();
+    var name = $(this).siblings('[data-property=name]').val();
+    $('#puppetclasses_parameters [id^="puppetclass_"][id*="_params\\["][id$="\\]"]').each(function(){
+      var param = $(this);
+      if (param.find('[data-property=class]').text() == klass && param.find('[data-property=name]').text() == name) {
+        param.addClass('override-param');
+        param.find('input, textarea').addClass('override-param');
+        param.find('[data-tag=override]').hide();
+      }
+    });
+  });
 }
 
-function add_fields(link, association, content) {
+function add_fields(destination, association, content, insertion_method) {
+  insertion_method = insertion_method || 'before';
   var new_id = new Date().getTime();
   var regexp = new RegExp("new_" + association, "g");
-  $(link).before(content.replace(regexp, new_id));
+  $(destination)[insertion_method](content.replace(regexp, new_id));
 }
 
 function checkAll (id, checked) {
