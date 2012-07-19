@@ -48,12 +48,12 @@ class Environment < ActiveRecord::Base
       for env in db_tree.keys
         # Show the environment if there are classes in the db that do not exist on disk
         # OR if there is no mention of the class on-disk
-        surplus_db_classes = db_tree[env].dup.delete_if { |k,v| disk_tree[env].has_key? k }
+        surplus_db_classes = db_tree[env].dup.delete_if { |k,v| disk_tree[env].is_a?(Hash) && disk_tree[env].has_key?(k) }
         surplus_db_classes["_destroy_"] = "_destroy_" unless disk_tree.has_key?(env) # We need to distinguish between an empty and an obsolete env
         changes["obsolete"][env] = surplus_db_classes if surplus_db_classes.size > 0
       end
       for env in disk_tree.keys
-        extra_disk_classes = disk_tree[env].dup.delete_if { |k,v| db_tree[env].has_key? k }
+        extra_disk_classes = disk_tree[env].dup.delete_if { |k,v| db_tree[env].is_a(Hash) && db_tree[env].has_key?(k) }
         # Show the environment if there are new classes compared to the db
         # OR if the environment has no puppetclasses but does not exist in the db
         changes["new"][env] = extra_disk_classes if (extra_disk_classes.size > 0 or (disk_tree[env].size == 0 and Environment.find_by_name(env).nil?))
