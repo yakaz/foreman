@@ -116,7 +116,7 @@ class LookupKey < ActiveRecord::Base
       # Remove preceding "---" and indentation, for readability in the form
       value.sub! /\A---\s*$\n/, ''
       value.gsub! /^#{$1}/, '' if value =~ /\A( +)/
-    end unless validator_type.nil?
+    end unless validator_type.blank?
     value
   end
 
