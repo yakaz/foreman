@@ -31,11 +31,13 @@ module ApplicationHelper
   # +association : The field are created to allow entry into this association
   # +partial+    : String containing an optional partial into which we render
   def link_to_add_fields(name, f, association, partial = nil, options = {})
+    destination = options[:destination] || 'this'
+    insertion_method = options[:insertion_method] || 'before'
     new_object = f.object.class.reflect_on_association(association).klass.new
     fields = f.fields_for(association, new_object, :child_index => "new_#{association}") do |builder|
       render((partial.nil? ? association.to_s.singularize + "_fields" : partial), :f => builder)
     end
-    link_to_function(name, ("add_fields(this, \"#{association}\", \"#{escape_javascript(fields)}\")").html_safe, options.merge({:class => "btn btn-small btn-success"}) )
+    link_to_function(name, ("add_fields(#{destination}, \"#{association}\", \"#{escape_javascript(fields)}\", \"#{insertion_method}\")").html_safe, options.merge({:class => "btn btn-small btn-success"}) )
   end
 
   def toggle_div divs
