@@ -56,7 +56,8 @@
 
     <div class="tab-pane"  id="params">
       <h6>Puppet classes Parameters</h6>
-      <table class="table table-condensed" id="puppetclasses_parameters">
+      <p></p>
+      <table class="table table-condensed" id="inherited_puppetclasses_parameters">
         <thead>
           <tr>
             <th>Puppet class</th>
@@ -70,9 +71,6 @@
         <tbody>
           <%= render "puppetclasses/classes_parameters", { :obj => @host } %>
         </tbody>
-        <tfoot class="hide"><%# Hidden button to add an override, used from javascript only -%>
-          <tr><td colspan="6"><%= authorized_via_my_scope('host_editing', 'create_params') ? link_to_add_fields('+ Add Override', f, :lookup_values, 'common_parameters/puppetclass_parameter', :destination => '$("#parameters > .btn-success")') : '' %></td></tr>
-        </tfoot>
       </table>
 
       <h6>Included Parameters via inheritance</h6>
@@ -80,6 +78,8 @@
       <%= render "common_parameters/inherited_parameters", { :inherited_parameters => @host.host_inherited_params } %>
 
       <h6>Host Parameters</h6>
+      <p></p>
+      <%= render "common_parameters/puppetclasses_parameters", :f => f %>
       <p></p>
       <%= render "common_parameters/parameters", { :f => f, :type => :host_parameters } %>
     </div>

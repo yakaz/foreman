@@ -87,12 +87,12 @@ function mark_params_override(){
       }
     })
   })
-  $('#puppetclasses_parameters .override-param').removeClass('override-param');
-  $('#puppetclasses_parameters [data-tag=override]').show();
-  $('#parameters').find('[data-property=class]:visible').each(function(){
+  $('#inherited_puppetclasses_parameters .override-param').removeClass('override-param');
+  $('#inherited_puppetclasses_parameters [data-tag=override]').show();
+  $('#puppetclasses_parameters').find('[data-property=class]:visible').each(function(){
     var klass = $(this).val();
     var name = $(this).siblings('[data-property=name]').val();
-    $('#puppetclasses_parameters [id^="puppetclass_"][id*="_params\\["][id$="\\]"]').each(function(){
+    $('#inherited_puppetclasses_parameters [id^="puppetclass_"][id*="_params\\["][id$="\\]"]').each(function(){
       var param = $(this);
       if (param.find('[data-property=class]').text() == klass && param.find('[data-property=name]').text() == name) {
         param.addClass('override-param');
