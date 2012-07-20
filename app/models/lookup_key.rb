@@ -76,15 +76,18 @@ class LookupKey < ActiveRecord::Base
   #     +obs_matcher_block+: Callback to notify with extra information.
   #                          It is given a hash having the following structure:
   #                          +{ :host => #<Host>, :used_matched => "fact=value", :value => {:original => ..., :final => ...} }+
+  #     +skip_fqdn+: Boolean value indicating whether to skip the fqdn matcher. Defaults to false.
+  #                  Useful to give the previous value, prior to an eventual override.
   #TODO: use SQL coalesce to minimize the amount of queries
   def value_for host, facts = nil, options = {}
     on_unavailable_fact = options[:on_unavailable_fact]
     obs_matcher_block = options[:obs_matcher_block]
+    skip_fqdn = options[:skip_fqdn] || false
     facts = host.facts_hash if facts == nil
     used_matcher = nil
     original_value = default_value
     path2matches(host).each do |match|
-      if (v = lookup_values.find_by_match(match))
+      if (v = lookup_values.find_by_match(match)) and not (skip_fqdn and match =~ /^fqdn=/)
         original_value = v.value
         used_matcher = match
         break

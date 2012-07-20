@@ -10,7 +10,7 @@
         name = key.key
         infos = { :used_matcher => nil }
         errors = Set.new
-        value_orig = key.value_for host, host_facts, :obs_matcher_block => Proc.new { |h| infos = h }, :on_unavailable_fact => Proc.new { |f,h| errors << f; "{UNKNOWN_FACT:#{f}}" }
+        value_orig = key.value_for host, host_facts, :obs_matcher_block => Proc.new { |h| infos = h }, :on_unavailable_fact => Proc.new { |f,h| errors << f; "{UNKNOWN_FACT:#{f}}" }, :skip_fqdn => true
         value = key.value_before_type_cast value_orig
         origin = '(default value)'
         origin = infos[:used_matcher] unless infos[:used_matcher].nil?
