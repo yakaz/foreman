@@ -101,7 +101,30 @@ class HostsController < ApplicationController
 
   def update
     forward_request_url
+    # Due to some Rails bug, we need to update the (complicatedly) related lookup values separately
+    lookup_values_params = params[:host].delete(:lookup_values_attributes)
     if @host.update_attributes(params[:host])
+      # Once the host is updated, process any lookup value
+      lookup_values_params.each_value do |lookup_value_params|
+        lookup_value_params[:match] = "fqdn=#{@host.fqdn}"
+        # Existing LookupValue
+        if lookup_value_params.has_key? :id
+          lookup_value = LookupValue.find_by_id lookup_value_params.delete(:id)
+          if ActiveRecord::ConnectionAdapters::Column.value_to_boolean lookup_value_params.delete(:_destroy)
+            lookup_value.destroy
+          else
+            lookup_value.update_attributes(lookup_value_params) or process_error
+            lookup_value.save!
+          end
+        # New LookupValue, attached to a parent LookupKey
+        elsif lookup_value_params.has_key? :lookup_key_id
+            and not ActiveRecord::ConnectionAdapters::Column.value_to_boolean lookup_value_params.delete(:_destroy) # skip dropped creations
+          lookup_value = LookupValue.new lookup_value_params
+          lookup_value.save!
+          lookup_key = LookupKey.find_by_id lookup_value_params[:lookup_key_id]
+          lookup_key.lookup_values << lookup_value
+        end
+      end unless lookup_values_params.nil?
       process_success :success_redirect => host_path(@host), :redirect_xhr => request.xhr?
     else
       load_vars_for_ajax
