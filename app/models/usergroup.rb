@@ -1,7 +1,7 @@
 class Usergroup < ActiveRecord::Base
   include Authorization
-  has_many_polymorphs :members, :from => [:usergroups, :users ], :as => :member,
-    :through => :usergroup_member, :foreign_key => :usergroup_id, :dependent => :destroy
+  has_and_belongs_to_many :usergroups, :join_table => 'usergroup_members', :association_foreign_key => 'member_id', :conditions => {:'usergroup_members.member_type' => 'Usergroup'}, :insert_sql => Proc.new { |record| %Q{INSERT INTO usergroup_members (member_id, member_type, usergroup_id) VALUES (#{record.id}, '#{record.class.to_s}', #{id})} }
+  has_and_belongs_to_many :users, :join_table => 'usergroup_members', :association_foreign_key => 'member_id', :conditions => {:'usergroup_members.member_type' => 'User'}, :insert_sql => Proc.new { |record| %Q{INSERT INTO usergroup_members (member_id, member_type, usergroup_id) VALUES (#{record.id}, '#{record.class.to_s}', #{id})} }
 
   has_many :hosts, :as => :owner
   validates_uniqueness_of :name
