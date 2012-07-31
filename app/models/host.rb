@@ -15,7 +15,7 @@ class Host < Puppet::Rails::Host
   belongs_to :compute_resource
   belongs_to :image
 
-  has_many :lookup_values, :finder_sql => Proc.new { %Q{ SELECT * FROM lookup_values WHERE (lookup_values.match = 'fqdn=#{fqdn}') } }, :dependent => :destroy
+  has_many :lookup_values, :finder_sql => Proc.new { normalize_hostname; %Q{ SELECT lookup_values.* FROM lookup_values WHERE (lookup_values.match = 'fqdn=#{fqdn}') } }, :dependent => :destroy
   accepts_nested_attributes_for :lookup_values,   :reject_if => lambda { |a| a[:value].blank? }, :allow_destroy => true
 
   ENC_FORMATS = [ :"puppet 0.23.0+", :"puppet 2.6.5+" ]
