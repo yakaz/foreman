@@ -1,6 +1,12 @@
 source 'http://rubygems.org'
 
-gem 'rails', '3.2.0'
+# Rails 3.2
+gem 'rails', '= 3.2.0'
+gem 'sass-rails', '~> 3.2.3'
+gem 'coffee-rails', '~> 3.2.1'
+gem 'therubyracer', :require => 'v8' # the javascript backend to use for coffee-rails
+gem 'uglifier', ' >= 1.0.3'
+
 gem "jquery-rails"
 gem 'json'
 gem 'rest-client', :require => 'rest_client'
