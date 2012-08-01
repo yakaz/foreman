@@ -35,7 +35,7 @@ class HostsController < ApplicationController
       format.html do
         @hosts = search.paginate :page => params[:page], :include => included_associations
         # SQL optimizations queries
-        @last_reports = Report.maximum(:id, :group => :host_id, :conditions => {:host_id => @hosts})
+        @last_reports = Report.maximum(:id, :group => :host_id, :conditions => {:host_id => @hosts.map(&:id)})
         # rendering index page for non index page requests (out of sync hosts etc)
         render :index if title and (@title = title)
       end
