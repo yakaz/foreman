@@ -17,8 +17,9 @@ class PuppetclassesController < ApplicationController
     respond_to do |format|
       format.html do
         @puppetclasses = values.paginate :page => params[:page], :include => [:environments, :hostgroups]
-        @host_counter = Host.count(:group => :puppetclass_id, :joins => :puppetclasses, :conditions => {:puppetclasses => {:id => @puppetclasses}})
-        @keys_counter = LookupKey.count(:group => :puppetclass_id, :conditions => {:puppetclass_id => @puppetclasses})
+        puppetclass_ids = @puppetclasses.map(&:id) # get the ids to prevent unsupported "IN (subquery with LIMIT)" with MySQL
+        @host_counter = Host.count(:group => :puppetclass_id, :joins => :puppetclasses, :conditions => {:puppetclasses => {:id => puppetclass_ids}})
+        @keys_counter = LookupKey.count(:group => :puppetclass_id, :conditions => {:puppetclass_id => puppetclass_ids})
       end
       format.json { render :json => Puppetclass.classes2hash(values.all(:select => "name, id")) }
     end
