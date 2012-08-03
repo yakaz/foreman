@@ -16,7 +16,7 @@ class Host < Puppet::Rails::Host
   belongs_to :image
 
   has_many :lookup_values, :finder_sql => Proc.new { normalize_hostname; %Q{ SELECT lookup_values.* FROM lookup_values WHERE (lookup_values.match = 'fqdn=#{fqdn}') } }, :dependent => :destroy
-  accepts_nested_attributes_for :lookup_values,   :reject_if => lambda { |a| a[:value].blank? }, :allow_destroy => true
+  # See "def lookup_values_attributes=" under, for the implementation of accepts_nested_attributes_for :lookup_values
 
   ENC_FORMATS = [ :"puppet 0.23.0+", :"puppet 2.6.5+" ]
   class UnresolvedMandatoryParametersException < RuntimeError
@@ -180,6 +180,24 @@ class Host < Puppet::Rails::Host
   before_validation :set_hostgroup_defaults, :set_ip_address, :set_default_user, :normalize_addresses, :normalize_hostname, :force_lookup_value_matcher
   after_validation :ensure_assoications
   before_validation :set_certname, :if => Proc.new {|h| h.managed? and Setting[:use_uuid_for_certificates] } if SETTINGS[:unattended]
+
+  # Replacement of accepts_nested_attributes_for :lookup_values,
+  # to work around the lack of `host_id` column in lookup_values.
+  def lookup_values_attributes= lookup_values_attributes
+    lookup_values_attributes.each_value do |attributes|
+      attributes = attributes.dup
+      if attributes.has_key? :id
+        lookup_value = lookup_values.find attributes.delete :id
+        mark_for_destruction = ActiveRecord::ConnectionAdapters::Column.value_to_boolean attributes.delete :_destroy
+        lookup_value.attributes = attributes
+        lookup_values.delete lookup_value if mark_for_destruction
+        lookup_value.save!                unless mark_for_destruction
+      elsif !ActiveRecord::ConnectionAdapters::Column.value_to_boolean attributes.delete :_destroy
+        lookup_values.build(attributes)
+      end
+    end
+  end
+  attr_accessible :lookup_values_attributes
 
   def to_param
     name
