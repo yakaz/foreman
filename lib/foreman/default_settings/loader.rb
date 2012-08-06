@@ -7,14 +7,28 @@ module Foreman
     module Loader
       class << self
 
-        def set name, description, default, value = nil
+        private
+        META = Hash.new { |h,k| h[k] = {} }
+        public
+        def meta_for name
+          META[name.to_sym]
+        end
+
+        def set name, description, default, options = nil
+          if options.is_a? Hash
+            value = options.delete :value
+          else
+            value = options
+            options = nil
+          end
           value ||= SETTINGS[name.to_sym]
-          {:name => name, :value => value, :description => description, :default => default}
+          {:name => name, :value => value, :description => description, :default => default, :meta => options}
         end
 
         def create opts
+          META[opts[:name].to_sym] = opts[:meta] if opts[:meta]
           if (s=Setting.first(:conditions => {:name => (opts[:name])})).nil?
-            Setting.create!(opts)
+            Setting.create!(opts) # meta must be set before this call
           else
             s.update_attribute(:default, opts[:default]) unless s.default == opts[:default]
           end
@@ -58,7 +72,7 @@ module Foreman
               set('using_storeconfigs', "Foreman is sharing its database with Puppet Store configs", (!Puppet.settings.instance_variable_get(:@values)[:master][:dbadapter].empty? rescue false)),
               set('Default_variables_Lookup_Path', "The Default path in which Foreman resolves host specific variables", ["fqdn", "hostgroup", "os", "domain"]),
               set('Enable_Smart_Variables_in_ENC', "Should the smart variables be exposed via the ENC yaml output?", true),
-              set('enc_format', "What format should Foreman use to answer Puppet in its ENC yaml output? ", "puppet 0.23.0+"), # in Host.ENC_FORMATS
+              set('enc_format', "What format should Foreman use to answer Puppet in its ENC yaml output? ", "puppet 0.23.0+", :enum => Host::ENC_FORMATS),
               set('enc_environment', "Should Foreman provide puppet environment in ENC yaml output? (this avoids the mismatch error between puppet.conf and ENC environment)", true),
               set('use_uuid_for_certificates', "Should Foreman use random UUID's for certificate signing instead of hostnames", false),
               set('update_environment_from_facts', "Should Foreman update a host's environment from its facts", false)

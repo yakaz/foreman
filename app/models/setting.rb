@@ -1,9 +1,9 @@
 class Setting < ActiveRecord::Base
-  attr_accessible :name, :value, :description, :category, :settings_type, :default
+  attr_accessible :name, :value, :raw_value, :description, :category, :settings_type, :default, :raw_default
   # audit the changes to this model
   audited :only => [:value], :on => [:update]
 
-  TYPES= %w{ integer boolean hash array }
+  TYPES= %w{ integer boolean enum hash array }
   FROZEN_ATTRS = %w{ name default description category settings_type }
   validates_presence_of :name, :description
   validates_presence_of :default, :unless => Proc.new { |s| !s.default } # broken validator
@@ -15,6 +15,8 @@ class Setting < ActiveRecord::Base
   before_validation :fix_types
   before_save :save_as_settings_type
   validate :validate_attributes
+  validate :validate_value_in_enum, :if => Proc.new {|s| s.settings_type == "enum"}
+  validate :validate_default_in_enum, :if => Proc.new {|s| s.settings_type == "enum"}
   default_scope :order => 'LOWER(settings.name)'
 
   scoped_search :on => :name, :complete_value => :true
@@ -53,29 +55,64 @@ class Setting < ActiveRecord::Base
     v = (val.nil? or val == default) ?  nil : val.to_yaml
     write_attribute :value, v
   end
+  alias_method :raw_value=, :value=
 
-  def value
+  def raw_value
     v = read_attribute(:value)
     v.nil? ? default : YAML.load(v)
   end
-  alias_method :value_before_type_cast, :value
+  alias_method :value_before_type_cast, :raw_value
+
+  def value
+    resolve_enum_value raw_value
+  end
+
+  def raw_default
+    YAML.load(read_attribute(:default))
+  end
 
   def default
-    YAML.load(read_attribute(:default))
+    resolve_enum_value raw_default
   end
 
   def default=(v)
     write_attribute :default, v.to_yaml
   end
 
-  alias_method :default_before_type_cast, :default
+  alias_method :default_before_type_cast, :raw_default
+
+  def meta
+    Foreman::DefaultSettings::Loader.meta_for(name)
+  end
+
+  def enum_values
+    meta[:enum] if settings_type == 'enum'
+  end
+
+  def resolve_enum_value key
+    enum = enum_values
+    return key if enum.nil? # noop for non enum settings
+    # The following return nil for invalid keys
+    return enum.with_indifferent_access[key] if enum.is_a? Hash # use the hash as a translation table
+    key if enum.include?(key.to_s) or enum.include?(key.to_sym)
+  end
+
+  def serializable_hash(options=nil)
+    options ||= {}
+    options[:methods] ||= []
+    options[:methods] << :raw_value
+    options[:methods] << :raw_default
+    super options
+  end
 
   private
 
   def save_as_settings_type
     return true unless settings_type.nil?
     t = default.class.to_s.downcase
-    if TYPES.include?(t)
+    if self.meta[:enum]
+      self.settings_type = "enum"
+    elsif TYPES.include?(t)
       self.settings_type = t
     else
       self.settings_type = "integer" if default.is_a?(Integer)
@@ -88,6 +125,10 @@ class Setting < ActiveRecord::Base
     when "boolean"
       self.value = true  if value == "true"
       self.value = false if value == "false"
+    when "enum"
+      # Don't write symbols in db
+      self.value = self.raw_value.to_s
+      self.default = self.raw_default.to_s
     when "integer"
       self.value = value.to_i if value =~ /\d+/
     when "array"
@@ -115,5 +156,15 @@ class Setting < ActiveRecord::Base
       end
     end
     true
+  end
+
+  def validate_default_in_enum
+    e = enum_values
+    e.include? raw_default.to_s or e.include? raw_default.to_sym
+  end
+
+  def validate_value_in_enum
+    e = enum_values
+    e.include? raw_value.to_s or e.include? raw_value.to_sym
   end
 end
