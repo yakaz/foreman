@@ -21,24 +21,30 @@
   <% end -%>
   <%= selectable_f f, :validator_type, options_for_select(LookupKey::VALIDATION_TYPES, f.object.validator_type),
     {},
-    { :label => "Type Validator", :class => "medium",
+    { :label => "Type", :class => "medium",
       :help_inline => popover("?","<dl>
        <dt>String</dt> <dd>Everything is taken as a string.</dd>
-       <dt>Regexp</dt> <dd>Regular expression to verify the string values.</dd>
-       <dt>Range</dt> <dd>A range of valid values (eg.: <code>0..255</code>, <code>'bar'..'foo'</code>, <code>\"a\"..\"zz\"</code>). Use <code>...</code> to exclude the high bound.</dd>
+       <dt>List <small>(constrained)</small></dt> <dd>The input string must be one of those listed in the <em>constraint</em>.<dd>
+       <dt>Regexp <small>(constrained)</small></dt> <dd>The input string must match the Regular expression in the <em>constraint</em>.</dd>
        <dt>Boolean</dt> <dd>Common representation of boolean values are accepted.</dd>
        <dt>Integer</dt> <dd>Integer numbers only, can be negative.</dd>
        <dt>Real</dt> <dd>Accept any numerical input.</dd>
-       <dt>List</dt> <dd>Accepts a few values, given as comma seperated values, e.g. <code>80,443</code> will accept only two values.<dd>
+       <dt>Range <small>(constrained)</small></dt> <dd>A <em>constrained</em> range of valid values, either integer, real or litteral.</dd>
        <dt>Array</dt> <dd>A valid JSON or YAML input, that must evaluate to an array.</dd>
        <dt>Hash</dt> <dd>A valid JSON or YAML input, that must evaluate to an object/map/dict/hash.</dd>
        <dt>YAML</dt> <dd>Any valid YAML input.</dd>
        <dt>JSON</dt> <dd>Any valid JSON input.</dd>
-       </dl>
-       ", :title => "How values are validated").html_safe}
+       </dl>", :title => "How values are validated").html_safe}
   %>
-  <%= text_f f, :validator_rule, :label => "Validator constraint", :class => "span6",
-    :help_inline => popover("?","Values to match Type validator, only used for \"regexp\" and \"list\"", :title => "Validator constraint")%>
+  <%= text_f f, :validator_rule, :label => "Constraint", :class => "span6",
+    :help_inline => popover("?","Used only with some types: <dl>
+       <dt>Regexp</dt> <dd>A regular expression the input string must match.</dd>
+       <dt>Range</dt> <dd>A range of integers, reals or strings the input must lie within.<br/>
+         Eg.: <code>0..255</code>, <code>0.0..1.0</code>, <code>'bar'..'foo'</code>, <code>\"a\"..\"zz\"</code>).<br/>
+         Use <code>...</code> to exclude the high bound from the valid range.</dd>
+       <dt>List</dt> <dd>A comma separated list of accepted string values.<br/>
+         Eg.: <code>80,443</code>.</dd>
+       </dl>", :title => "Constraint")%>
   <%= textarea_f f, :path, :rows => "4", :value => f.object.path, :label => "Order",
     :help_inline => popover("?", "The order in which matchers keys are processed, first match wins.<br>
     You may use multiple attributes as a matcher key, for example, an order of <code>hostgroup, environment</code>
