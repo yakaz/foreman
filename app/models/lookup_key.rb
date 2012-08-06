@@ -1,7 +1,7 @@
 class LookupKey < ActiveRecord::Base
   include Authorization
 
-  VALIDATION_TYPES = %w( string regexp range boolean integer real list array hash yaml json )
+  VALIDATION_TYPES = %w( string list regexp boolean integer real range array hash yaml json )
 
   TRUE_VALUES = [true, 1, '1', 't', 'T', 'true', 'TRUE', 'on', 'ON', 'yes', 'YES', 'y', 'Y'].to_set
   FALSE_VALUES = [false, 0, '0', 'f', 'F', 'false', 'FALSE', 'off', 'OFF', 'no', 'NO', 'n', 'N'].to_set
