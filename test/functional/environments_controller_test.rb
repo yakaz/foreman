@@ -96,7 +96,7 @@ class EnvironmentsControllerTest < ActionController::TestCase
     Environment.delete_all
     @request.env["HTTP_REFERER"] = environments_url
     # This is the database status
-    # and should result in a db_tree of {"env1" => ["a", "b", "c"], "env2" => ["a", "b", "c"]}
+    # and should result in a db_tree of {"env1" => {"a"=>{}, "b"=>{}, "c"=>{}}, "env2" => {"a"=>{}, "b"=>{}, "c"=>{}}}
     as_admin do
       ["a", "b", "c"].each  {|name| Puppetclass.create :name => name}
       for name in ["env1", "env2"] do
@@ -105,23 +105,23 @@ class EnvironmentsControllerTest < ActionController::TestCase
       end
     end
     # This is the on-disk status
-    # and should result in a disk_tree of {"env1" => ["a", "b", "c"],"env2" => ["a", "b", "c"]}
-    envs = HashWithIndifferentAccess.new(:env1 => %w{a b c}, :env2 => %w{a b c})
+    # and should result in a disk_tree of {"env1" => {"a"=>{}, "b"=>{}, "c"=>{}},"env2" => {"a"=>{}, "b"=>{}, "c"=>{}}}
+    envs = HashWithIndifferentAccess.new(:env1 => {:a=>{}, :b=>{}, :c=>{}}, :env2 => {:a=>{}, :b=>{}, :c=>{}})
     Environment.expects(:puppetEnvs).returns(envs).at_least_once
   end
 
   test "should handle disk environment containing additional classes" do
     setup_import_classes
     Environment.find_by_name("env1").puppetclasses.delete(Puppetclass.find_by_name("a"))
-#    db_tree   of {"env1" => ["b", "c"],     "env2" => ["a", "b", "c"]}
-#    disk_tree of {"env1" => ["a", "b", "c"],"env2" => ["a", "b", "c"]}
+    #db_tree   of {"env1" => {"b"=>{}, "c"=>{}         }, "env2" => {"a"=>{}, "b"=>{}, "c"=>{}}}
+    #disk_tree of {"env1" => {"a"=>{}, "b"=>{}, "c"=>{}}, "env2" => {"a"=>{}, "b"=>{}, "c"=>{}}}
     get :import_environments, {:proxy => smart_proxies(:puppetmaster).id}, set_session_user
     assert_template "puppetclasses_or_envs_changed"
     assert_select 'input#changed_new_env1[value*="a"]'
     post :obsolete_and_new,
       {"changed" =>
         {"new" =>
-          {"env1" => '["a"]'}
+          {"env1" => '{"a":{}}'}
         }
       }, set_session_user
     assert_redirected_to environments_url
@@ -132,15 +132,15 @@ class EnvironmentsControllerTest < ActionController::TestCase
     setup_import_classes
     as_admin {Puppetclass.create(:name => "d")}
     Environment.find_by_name("env1").puppetclasses << Puppetclass.find_by_name("d")
-    #db_tree   of {"env1" => ["a", "b", "c", "d"], "env2" => ["a", "b", "c"]}
-    #disk_tree of {"env1" => ["a", "b", "c"],      "env2" => ["a", "b", "c"]}
+    #db_tree   of {"env1" => {"a"=>{}, "b"=>{}, "c"=>{}, "d"=>{}}, "env2" => {"a"=>{}, "b"=>{}, "c"=>{}}}
+    #disk_tree of {"env1" => {"a"=>{}, "b"=>{}, "c"=>{}         }, "env2" => {"a"=>{}, "b"=>{}, "c"=>{}}}
     get :import_environments, {:proxy => smart_proxies(:puppetmaster)}, set_session_user
     assert_template "puppetclasses_or_envs_changed"
     assert_select 'input#changed_obsolete_env1[value*="d"]'
     post :obsolete_and_new,
       {"changed" =>
         {"obsolete" =>
-          {"env1" => '["d"]'}
+          {"env1" => '{"d":{}}'}
         }
       }, set_session_user
     assert_redirected_to environments_url
@@ -151,15 +151,15 @@ class EnvironmentsControllerTest < ActionController::TestCase
   test "should handle disk environment containing less environments" do
     setup_import_classes
     as_admin {Environment.create(:name => "env3")}
-    #db_tree   of {"env1" => ["a", "b", "c"], "env2" => ["a", "b", "c"], "env3" => []}
-    #disk_tree of {"env1" => ["a", "b", "c"], "env2" => ["a", "b", "c"]}
+    #db_tree   of {"env1" => {"a"=>{}, "b"=>{}, "c"=>{}}, "env2" => {"a"=>{}, "b"=>{}, "c"=>{}}, "env3" => {}}
+    #disk_tree of {"env1" => {"a"=>{}, "b"=>{}, "c"=>{}}, "env2" => {"a"=>{}, "b"=>{}, "c"=>{}}              }
     get :import_environments, {:proxy => smart_proxies(:puppetmaster).id}, set_session_user
     assert_template "puppetclasses_or_envs_changed"
     assert_select 'input#changed_obsolete_env3'
     post :obsolete_and_new,
       {"changed" =>
         {"obsolete" =>
-          {"env3" => '[]'}
+          {"env3" => '{}'}
         }
       }, set_session_user
     assert_redirected_to environments_url
@@ -181,7 +181,7 @@ class EnvironmentsControllerTest < ActionController::TestCase
     post :obsolete_and_new,
       {"changed"=>
         {"obsolete" =>
-          {"env1"  => '["a","b","c","_destroy_"]'}
+          {"env1"  => '{"a":{},"b":{},"c":{},"_destroy_":{}}'}
         }
       }, set_session_user
     assert Environment.find_by_name("env1").hosts.count > 0

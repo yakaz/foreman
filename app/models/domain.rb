@@ -22,9 +22,7 @@ class Domain < ActiveRecord::Base
 
   default_scope :order => 'LOWER(domains.name)'
 
-  class Jail < Safemode::Jail
-    allow :name, :fullname
-  end
+  attr_accessible :name, :fullname, :domain_parameters_attributes
 
   def to_param
     name

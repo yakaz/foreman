@@ -26,6 +26,7 @@ class Puppetclass < ActiveRecord::Base
 
 
   def self.from_param param
+    return find Integer(param) rescue nil
     find_by_name param
   end
 

@@ -47,10 +47,9 @@ class Hostgroup < ActiveRecord::Base
     {:conditions => conditions}
   }
 
-  class Jail < Safemode::Jail
-    allow :name, :diskLayout, :puppetmaster, :operatingsystem, :architecture,
-      :environment, :ptable, :url_for_boot, :params, :puppetproxy
-  end
+  attr_accessible :name, :diskLayout, :puppetmaster, :operatingsystem, :architecture,
+    :environment, :ptable, :url_for_boot, :params, :puppetproxy, :parent_id,
+    :puppetclass_ids, :group_parameters_attributes
 
   #TODO: add a method that returns the valid os for a hostgroup
 

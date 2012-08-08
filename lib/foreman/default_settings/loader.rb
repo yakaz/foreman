@@ -26,7 +26,8 @@ module Foreman
         end
 
         def create opts
-          META[opts[:name].to_sym] = opts[:meta] if opts[:meta]
+          meta = opts.delete :meta
+          META[opts[:name].to_sym] = meta unless meta.blank?
           if (s=Setting.first(:conditions => {:name => (opts[:name])})).nil?
             Setting.create!(opts) # meta must be set before this call
           else

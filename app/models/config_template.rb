@@ -26,10 +26,6 @@ class ConfigTemplate < ActiveRecord::Base
   scoped_search :in => :hostgroups,       :on => :name, :rename => :hostgroup,       :complete_value => true
   scoped_search :in => :template_kind,    :on => :name, :rename => :kind,            :complete_value => true
 
-  class Jail < Safemode::Jail
-    allow :name
-  end
-
   def to_param
     name
   end

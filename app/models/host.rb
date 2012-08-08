@@ -33,11 +33,19 @@ class Host < Puppet::Rails::Host
   include Hostext::Search
   include HostCommon
 
-  class Jail < ::Safemode::Jail
-    allow :name, :diskLayout, :puppetmaster, :puppet_ca_server, :operatingsystem, :os, :environment, :ptable, :hostgroup, :url_for_boot,
-      :params, :info, :hostgroup, :compute_resource, :domain, :ip, :mac, :shortname, :architecture, :model, :certname, :capabilities,
-      :provider
-  end
+  attr_accessible :name, :diskLayout, :puppetmaster, :puppet_ca_server, :operatingsystem, :os, :environment, :ptable, :hostgroup, :url_for_boot,
+    :params, :info, :hostgroup, :compute_resource, :domain, :ip, :mac, :shortname, :architecture, :model, :certname, :capabilities,
+    :provider, :managed, :host_parameters_attributes, :owner, :subnet, :puppet_proxy
+  # FIXME: We may want to restrict some of those... (added as I saw the log complaining about those)
+  attr_accessible :architecture_id, :comment, :image_id, :last_report, :serial,
+    :subnet_id, :created_at, :compute_resource_id, :image_file, :sp_mac,
+    :puppet_proxy_id, :updated_at, :uuid, :domain_id, :installed_at,
+    :puppet_ca_proxy_id, :sp_name, :build, :enabled, :hostgroup_id, :medium_id,
+    :owner_id, :root_pass, :use_image, :ptable_id, :environment_id,
+    :last_freshcheck, :puppet_status, :sp_subnet_id, :model_id,
+    :source_file_id, :disk, :sp_ip, :last_compile, :operatingsystem_id,
+    :owner_type
+
 
   attr_reader :cached_host_params, :cached_lookup_keys_params, :cached_lookup_keys_class_params
 
@@ -756,7 +764,7 @@ class Host < Puppet::Rails::Host
       self.domain = Domain.all.select{|d| name.match(d.name)}.first rescue nil
     else
       # if our host is in short name, append the domain name
-      if !new_record? and changed_attributes.keys.include? "domain_id"
+      if !new_record? and !changed_attributes["domain_id"].blank?
         old_domain = Domain.find(changed_attributes["domain_id"])
         self.name.gsub(old_domain.to_s,"")
       end

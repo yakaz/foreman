@@ -104,3 +104,8 @@ attributes21:
   category: Provisioning
   default: false
   description: "Should Foreman query the locally configured name server or the SOA/NS authorities"
+attributes22:
+  name: enc_format
+  category: Puppet
+  default: puppet 0.23.0+
+  description: What format should Foreman use to answer Puppet in its ENC yaml output?

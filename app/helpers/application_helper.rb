@@ -85,15 +85,17 @@ module ApplicationHelper
     options
   end
 
-  def link_to_edit_puppetclass_vars klass, host, type = "fqdn", options = {}
-    return if klass.lookup_keys.empty?
+  def link_to_edit_puppetclass_vars klass, object, type = "fqdn", options = {}
+    return if klass.lookup_keys.empty? or object.id.blank?
     type = "fqdn" if type == "host"
+    object_class = object.class.name.to_s.downcase
+    data_url = url_for(method(:"hash_for_#{object_class}_puppetclass_parameters_path").call(:"#{object_class}_id" => object.id, :puppetclass_id => klass.id))
     options = add_html_classes options, "ui-icon ui-icon-wrench"
     link_to_function('', 'smart_var_dialog(this)',
                        options.merge(
                          :'data-class-id' => klass.id, :'data-type' => type,
                          :'data-original-title' => "Click to edit class parameters", :rel => 'twipsy',
-                         :'data-url' => url_for(hash_for_host_puppetclass_parameters_path(:host_id => host.id, :puppetclass_id => klass.id)),
+                         :'data-url' => data_url,
                          :'data-tag' => 'edit'
                        ))
   end

@@ -132,6 +132,11 @@ Foreman::Application.routes.draw do
       post 'use_image_selected'
       post 'medium_selected'
     end
+    constraints(:hostgroup_id => /[^\/]+/) do
+      resources :puppetclasses ,:only => :index do
+        get 'parameters'
+      end
+    end
   end
 
   resources :puppetclasses do

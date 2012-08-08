@@ -46,9 +46,8 @@ class Operatingsystem < ActiveRecord::Base
                'Archlinux' => %r{Archlinux}i,
                'Solaris' => %r{Solaris}i }
 
-  class Jail < Safemode::Jail
-    allow :name, :media_url, :major, :minor, :family, :to_s, :epel, :==, :release_name, :kernel, :initrd, :pxe_type, :medium_uri
-  end
+  attr_accessible :name, :media_url, :major, :minor, :family, :to_s, :epel, :==, :release_name, :kernel, :initrd, :pxe_type, :medium_uri,
+    :os_default_templates_attributes, :os_parameters_attributes
 
   # As Rails loads an object it casts it to the class in the 'type' field. If we ensure that the type and
   # family are the same thing then rails converts the record to a Debian or a solaris object as required.
