@@ -1,6 +1,6 @@
 class Puppetclass < ActiveRecord::Base
   include Authorization
-  has_and_belongs_to_many :environments
+  belongs_to :environment
   has_and_belongs_to_many :hostgroups
   has_many :host_classes, :dependent => :destroy
   has_many :hosts, :through => :host_classes
@@ -10,7 +10,7 @@ class Puppetclass < ActiveRecord::Base
 
   validates_uniqueness_of :name
   validates_presence_of :name
-  validates_associated :environments
+  validates_associated :environment
   validates_format_of :name, :with => /\A(\S+\s?)+\Z/, :message => "can't be blank or contain white spaces."
   audited
 
@@ -19,7 +19,7 @@ class Puppetclass < ActiveRecord::Base
   default_scope :order => 'LOWER(puppetclasses.name)'
 
   scoped_search :on => :name, :complete_value => :true
-  scoped_search :in => :environments, :on => :name, :complete_value => :true, :rename => "environment"
+  scoped_search :in => :environment,  :on => :name, :complete_value => :true, :rename => "environment"
   scoped_search :in => :hostgroups,   :on => :name, :complete_value => :true, :rename => "hostgroup"
   scoped_search :in => :hosts, :on => :name, :complete_value => :true, :rename => "host", :ext_method => :search_by_host, :only_explicit => true
 
@@ -56,6 +56,15 @@ class Puppetclass < ActiveRecord::Base
   # returns class name (excluding of the module name)
   def klass
     name.gsub(module_name+"::","")
+  end
+
+  def clone
+    new = super
+    new.hostgroups = hostgroups
+    new.host_classes = host_classes
+    new.hosts = hosts
+    new.lookup_keys = lookup_keys.map(&:clone)
+    new
   end
 
 

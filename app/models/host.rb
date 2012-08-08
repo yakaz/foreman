@@ -651,7 +651,7 @@ class Host < Puppet::Rails::Host
 
   # We have to coerce the value back to boolean. It is not done for us by the framework.
   def overwrite=(value)
-    @overwrite = value == "true"
+    @overwrite = ActiveRecord::ConnectionAdapters::Column.value_to_boolean value
   end
 
   def require_ip_validation?

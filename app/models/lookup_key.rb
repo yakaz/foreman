@@ -65,6 +65,12 @@ class LookupKey < ActiveRecord::Base
     key
   end
 
+  def clone
+    new = super
+    new.lookup_values = lookup_values.map(&:clone)
+    new
+  end
+
   # A nil return value is an error for mandatory lookup keys (no default value
   # and no triggered matcher) that should be properly handled by the caller.
   # For non mandatory lookup keys, it means that it should not be mentioned.
@@ -133,6 +139,7 @@ class LookupKey < ActiveRecord::Base
   end
 
   def path=(v)
+    v = array2path v if v.is_a? Array
     return if v == array2path(Setting["Default_variables_Lookup_Path"])
     write_attribute(:path, v)
   end

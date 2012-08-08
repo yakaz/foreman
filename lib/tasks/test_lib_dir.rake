@@ -7,4 +7,11 @@ namespace :test do
     t.verbose = true
   end
 
+  desc "Test migrations"
+  Rake::TestTask.new(:migration) do |t|
+    t.libs << "test"
+    t.pattern = 'test/migration/**/*_test.rb'
+    t.verbose = true
+  end
+
 end
