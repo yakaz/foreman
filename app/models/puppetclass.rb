@@ -1,7 +1,6 @@
 class Puppetclass < ActiveRecord::Base
   include Authorization
   has_and_belongs_to_many :environments
-  has_and_belongs_to_many :operatingsystems
   has_and_belongs_to_many :hostgroups
   has_many :host_classes, :dependent => :destroy
   has_many :hosts, :through => :host_classes
