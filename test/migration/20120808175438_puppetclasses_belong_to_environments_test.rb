@@ -5,12 +5,16 @@ class PuppetclassesBelongToEnvironmentsMigrationTest < ActiveRecord::MigrationTe
   end
 
   test "up does not fail" do
-    up
+    assert_nothing_raised do
+      up
+    end
   end
 
   test "up then down does not fail" do
-    up
-    down
+    assert_nothing_raised do
+      up
+      down
+    end
   end
 
 end
