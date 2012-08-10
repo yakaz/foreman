@@ -172,7 +172,7 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
   end
 
   class NewEnvironment < Environment
-    has_many :new_puppetclasses, :inverse_of => :environment, :foreign_key => 'environment_id'
+    has_many :puppetclasses, :class_name => 'PuppetclassesBelongToEnvironments::NewPuppetclass', :inverse_of => :environment, :foreign_key => 'environment_id'
   end
 
   class Puppetclass < ActiveRecord::Base
@@ -189,7 +189,7 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
   end
 
   class NewPuppetclass < Puppetclass
-    belongs_to :new_environment, :inverse_of => :puppetclasses
+    belongs_to :environment, :class_name => 'PuppetclassesBelongToEnvironments::NewEnvironment', :inverse_of => :puppetclasses
     def clone
       new = super
       new.hostgroups = hostgroups
