@@ -1,20 +1,5 @@
 class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
 
-  # XXX
-  # # Provide an object representation of the to-be-deleted
-  # # puppetclasses<=>environments relation
-  # class EnvironmentsPuppetclass < ActiveRecord::Base
-  #   belongs_to :environment
-  #   belongs_to :puppetclass
-  # end
-
-  # Register both the old relation that will be missing with the new code,
-  # but is necessary to revert the migration.
-  Puppetclass.class_eval {
-    belongs_to :environment
-    has_and_belongs_to_many :environments
-  }
-
   def self.up
     add_column :puppetclasses, :environment_id, :integer
 
@@ -22,19 +7,20 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
     pc_id_to_clone_ids_by_env = {} # mapping to find the new puppetclass id
                                    # corresponding to the desired environment,
                                    # from the previous puppetclass id
-    Puppetclass.all.each do |puppetclass|
-      env_ids = puppetclass.environment_ids # XXX EnvironmentsPuppetclass.where(:puppetclass_id => puppetclass.id).map(&:environment_id)
+    OldPuppetclass.all.each do |old_puppetclass|
+      env_ids = old_puppetclass.environment_ids
       first_env_id = env_ids.shift
-      mapping = pc_id_to_clone_ids_by_env[puppetclass.id] = {}
-      mapping[first_env_id] = puppetclass.id
+      mapping = pc_id_to_clone_ids_by_env[old_puppetclass.id] = {}
+      mapping[first_env_id] = old_puppetclass.id
       env_ids.each do |new_env_id|
-        new_pc = puppetclass.clone
+        new_pc = NewPuppetclass.find(old_puppetclass.id).clone
         new_pc.environment_id = new_env_id
         new_pc.save!
         mapping[new_env_id] = new_pc.id
       end
-      puppetclass.environment_id = first_env_id
-      puppetclass.save!
+      new_puppetclass = NewPuppetclass.find(old_puppetclass.id)
+      new_puppetclass.environment_id = first_env_id
+      new_puppetclass.save!
     end
 
     # Redirect related objects to the puppetclasses from the right environment
@@ -59,16 +45,16 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
     pc_id_to_name = {} # note id to name mapping, to reduce SQL query usage
     # Note what puppetclass name belong to what environments under what id
     pc_name_to_env_id_pc_id_mapping = Hash.new { |h,k| h[k] = {} }
-    Puppetclass.all.each do |puppetclass|
-      pc_id_to_name[puppetclass.id] = puppetclass.name
-      mapping = pc_name_to_env_id_pc_id_mapping[puppetclass.name]
-      mapping[puppetclass.environment_id] = puppetclass.id
-      if mapping["new_id"].nil? or puppetclass.id < mapping["new_id"]
+    NewPuppetclass.all.each do |new_puppetclass|
+      pc_id_to_name[new_puppetclass.id] = new_puppetclass.name
+      mapping = pc_name_to_env_id_pc_id_mapping[new_puppetclass.name]
+      mapping[new_puppetclass.environment_id] = new_puppetclass.id
+      if mapping["new_id"].nil? or new_puppetclass.id < mapping["new_id"]
         # Don't just take any id as the id to retain,
         # try to keep the same as the previous one,
         # which is simply done by taking the least id
         # (as they usually auto increment)
-        mapping["new_id"] = puppetclass.id
+        mapping["new_id"] = new_puppetclass.id
       end
     end
 
@@ -85,10 +71,10 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
     # Merge lookup keys
     pc_name_to_env_id_pc_id_mapping.each do |_,group|
       target_id = group.delete "new_id"
-      target = Puppetclass.find_by_id target_id
+      target = OldPuppetclass.find_by_id target_id
       group.delete target_id
       group.each do |_,pc_id|
-        current = Puppetclass.find_by_id pc_id
+        current = NewPuppetclass.find_by_id pc_id
         current.lookup_keys.all.each do |current_lookup_key|
           target_lookup_key = target.lookup_keys.where(:key => current_lookup_key.key, :is_param => current_lookup_key.is_param).first
           if target_lookup_key.nil?
@@ -101,10 +87,7 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
               end
             end
             # Merge path
-            path_elements_of = lambda { |lookup_key|
-              lookup_key.instance_eval { path_elements }
-            }
-            target_lookup_key.path = (path_elements_of.call(target_lookup_key) + path_elements_of.call(current_lookup_key)).uniq
+            target_lookup_key.path = (target_lookup_key.path_elements + current_lookup_key.path_elements).uniq
             target_lookup_key.is_mandatory = true if current_lookup_key.is_mandatory
             # Merge lookup values
             current_lookup_key.lookup_values.all.each do |current_lookup_value|
@@ -127,11 +110,150 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
       survivor_id = group.delete "new_id"
       group.delete survivor_id
       group.each do |_,pc_id|
-        Puppetclass.destroy pc_id
+        NewPuppetclass.destroy pc_id
       end
     end
 
     remove_column :puppetclasses, :environment_id
+  end
+
+  #
+  # Define the necessary model here.
+  #
+  # We should/can not mix the classes defined here,
+  # with classes defined in the app/models/ folder,
+  # as the class test will fail (same name, but different classes).
+  #
+
+  REDEFINED_CLASSES = %w(Environment Puppetclass LookupKey LookupValue Hostgroup Host) # without the Old/New prefixes
+
+  # Returns instances of the class, with another prefix.
+  # Eg.: Can be used to convert a OldModel to NewModel, or to Model.
+  module PrefixConvertors
+    def to_base
+      to_prefix ''
+    end
+
+    def to_old
+      to_prefix 'Old'
+    end
+
+    def to_new
+      to_prefix 'New'
+    end
+
+    private
+    def strip_prefix class_name
+      class_name.sub /(?:Old|New)([^:]*)$/, '\1'
+    end
+
+    def add_prefix class_name, prefix
+      class_name.sub /^(.*::)([^:]*)$/, "\\1#{prefix}\\2"
+    end
+
+    def target_class prefix
+      add_prefix(strip_prefix(self.class.name), prefix).constantize
+    end
+
+    def to_prefix prefix
+      new_class = target_class prefix
+      return new_class.new self.attributes if self.id.blank?
+      new_class.find self.id
+    end
+  end
+
+  class Environment < ActiveRecord::Base
+    include PrefixConvertors
+    set_table_name "environments"
+  end
+
+  class OldEnvironment < Environment
+    has_and_belongs_to_many :puppetclasses, :class_name => 'PuppetclassesBelongToEnvironments::OldPuppetclass', :join_table => 'environments_puppetclasses', :association_foreign_key => 'puppetclass_id', :foreign_key => 'environment_id'
+  end
+
+  class NewEnvironment < Environment
+    has_many :new_puppetclasses, :inverse_of => :environment, :foreign_key => 'environment_id'
+  end
+
+  class Puppetclass < ActiveRecord::Base
+    include PrefixConvertors
+    set_table_name "puppetclasses"
+    has_many :lookup_keys, :inverse_of => :puppetclass, :foreign_key => 'puppetclass_id'
+    has_many :host_classes, :dependent => :destroy, :inverse_of => :puppetclass
+    has_many :hosts, :through => :host_classes, :inverse_of => :puppetclasses
+    has_and_belongs_to_many :hostgroups
+  end
+
+  class OldPuppetclass < Puppetclass
+    has_and_belongs_to_many :environments, :class_name => 'PuppetclassesBelongToEnvironments::OldEnvironment', :join_table => 'environments_puppetclasses', :association_foreign_key => 'environment_id', :foreign_key => 'puppetclass_id'
+  end
+
+  class NewPuppetclass < Puppetclass
+    belongs_to :new_environment, :inverse_of => :puppetclasses
+    def clone
+      new = super
+      new.hostgroups = hostgroups
+      new.host_classes = host_classes
+      new.hosts = hosts
+      new.lookup_keys = lookup_keys.map(&:clone)
+      new
+    end
+  end
+
+  class LookupKey < ActiveRecord::Base
+    belongs_to :puppetclass, :inverse_of => :lookup_keys
+    has_many :lookup_values, :inverse_of => :lookup_key
+
+    KEY_DELM = ","
+    EQ_DELM  = "="
+
+    def path
+      read_attribute(:path) || array2path(Setting["Default_variables_Lookup_Path"])
+    end
+
+    def path=(v)
+      v = array2path v if v.is_a? Array
+      return if v == array2path(Setting["Default_variables_Lookup_Path"])
+      write_attribute(:path, v)
+    end
+
+    def path_elements
+      path.split.map do |paths|
+        paths.split(KEY_DELM).map do |element|
+          element
+        end
+      end
+    end
+
+    private
+
+    def array2path array
+      raise "invalid path" unless array.is_a?(Array)
+      array.map do |sub_array|
+        sub_array.is_a?(Array) ? sub_array.join(KEY_DELM) : sub_array
+      end.join("\n")
+    end
+
+  end
+
+  class LookupValue < ActiveRecord::Base
+    belongs_to :lookup_key, :inverse_of => :lookup_values
+  end
+
+  class Hostgroup < ActiveRecord::Base
+    has_many :hosts, :inverse_of => :hostgroup
+    has_and_belongs_to_many :puppetclasses
+  end
+
+  class HostClass < ActiveRecord::Base
+    belongs_to :host
+    belongs_to :puppetclass
+  end
+
+  class Host < ActiveRecord::Base
+    belongs_to :hostgroup, :inverse_of => :hosts
+    has_many :host_classes, :dependent => :destroy, :inverse_of => :host
+    has_many :puppetclasses, :through => :host_classes, :inverse_of => :hosts
   end
 
 end

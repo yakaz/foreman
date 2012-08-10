@@ -8,9 +8,9 @@ class Puppetclass < ActiveRecord::Base
   has_many :lookup_keys, :inverse_of => :puppetclass
   accepts_nested_attributes_for :lookup_keys, :reject_if => lambda { |a| a[:key].blank? }, :allow_destroy => true
 
-  validates_uniqueness_of :name
   validates_presence_of :name
   validates_associated :environment
+  validates_uniqueness_of :name, :scope => :environment_id, :unless => lambda { environment.nil? }
   validates_format_of :name, :with => /\A(\S+\s?)+\Z/, :message => "can't be blank or contain white spaces."
   audited
 
@@ -56,15 +56,6 @@ class Puppetclass < ActiveRecord::Base
   # returns class name (excluding of the module name)
   def klass
     name.gsub(module_name+"::","")
-  end
-
-  def clone
-    new = super
-    new.hostgroups = hostgroups
-    new.host_classes = host_classes
-    new.hosts = hosts
-    new.lookup_keys = lookup_keys.map(&:clone)
-    new
   end
 
 
