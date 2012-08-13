@@ -234,7 +234,7 @@ class PuppetclassesBelongToEnvironmentsMigrationTest < ActiveRecord::MigrationTe
       "Complementary lookup-values don't get merged into a single one"
   end
 
-  test "down merges lookup-keys properties" do
+  test "down merges lookup-keys basic properties" do
     pc_one_prod = NewPuppetclass.create! :name => "pc_one", :environment => @env_prod.to_new
     pc_one_foo  = NewPuppetclass.create! :name => "pc_one", :environment => @env_foo .to_new
 
@@ -258,6 +258,30 @@ class PuppetclassesBelongToEnvironmentsMigrationTest < ActiveRecord::MigrationTe
     assert_equal 'd', lk_two_new.default_value
     assert_equal 'e', lk_two_new.description
     assert_equal 'f', lk_two_new.validator_rule
+  end
+
+  test "down merges lookup-keys mandatory and path properties" do
+    pc_one_prod = NewPuppetclass.create! :name => "pc_one", :environment => @env_prod.to_new
+    pc_one_foo  = NewPuppetclass.create! :name => "pc_one", :environment => @env_foo .to_new
+
+    lk_one_prod = LookupKey.create! :puppetclass => pc_one_prod, :key => "lk_one", :is_mandatory => false, :path => ['a','c'    ]
+    lk_one_foo  = LookupKey.create! :puppetclass => pc_one_foo , :key => "lk_one", :is_mandatory => true , :path => ['a',    'b']
+    lk_two_prod = LookupKey.create! :puppetclass => pc_one_prod, :key => "lk_two", :is_mandatory => true , :path => ['a','b'    ]
+    lk_two_foo  = LookupKey.create! :puppetclass => pc_one_foo , :key => "lk_two", :is_mandatory => false, :path => ['a',    'c']
+
+    down
+
+    assert_equal 2, LookupKey.count,
+      "Merged lookup-keys"
+
+    lk_one_new = LookupKey.where(:key => lk_one_prod.key).first
+    lk_two_new = LookupKey.where(:key => lk_two_prod.key).first
+    assert_not_nil lk_one_new
+    assert_not_nil lk_two_new
+    assert_equal true, lk_one_new.is_mandatory
+    assert_equal [['a'], ['c'], ['b']], lk_one_new.path_elements
+    assert_equal true, lk_two_new.is_mandatory
+    assert_equal [['a'], ['b'], ['c']], lk_two_new.path_elements
   end
 
 end
