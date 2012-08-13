@@ -33,13 +33,13 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
       first_env_id = env_ids.shift
       mapping = pc_id_to_clone_ids_by_env[old_puppetclass.id] = {}
       mapping[first_env_id] = old_puppetclass.id
+      new_puppetclass = old_puppetclass.to_new
       env_ids.each do |new_env_id|
-        new_pc = NewPuppetclass.find(old_puppetclass.id).clone
+        new_pc = new_puppetclass.clone
         new_pc.environment_id = new_env_id
         new_pc.save!
         mapping[new_env_id] = new_pc.id
       end
-      new_puppetclass = NewPuppetclass.find(old_puppetclass.id)
       new_puppetclass.environment_id = first_env_id
       new_puppetclass.save!
     end
@@ -286,6 +286,12 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
 
     KEY_DELM = ","
     EQ_DELM  = "="
+
+    def clone
+      new = super
+      new.lookup_values = lookup_values.map(&:clone)
+      new
+    end
 
     def path
       read_attribute(:path) || array2path(Setting["Default_variables_Lookup_Path"])

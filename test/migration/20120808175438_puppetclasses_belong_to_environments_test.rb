@@ -68,8 +68,8 @@ class PuppetclassesBelongToEnvironmentsMigrationTest < ActiveRecord::MigrationTe
 
     # @lk_one_global_one = LookupKey.create! :puppetclass => @pc_one, :key => "lk_one", :is_param => false
     # @lk_one_param_one  = LookupKey.create! :puppetclass => @pc_two, :key => "lk_one", :is_param => true
-    # @lk_one_two = LookupKey.create! :key => "lk_two", :is_param => false
-    # @lk_two_two = LookupKey.create! :key => "lk_two", :is_param => false
+    # @lk_one_two = LookupKey.create! :puppetclass => @pc_one, :key => "lk_two", :is_param => false
+    # @lk_two_two = LookupKey.create! :puppetclass => @pc_two, :key => "lk_two", :is_param => false
   end
 
   test "up does not fail" do
@@ -139,6 +139,38 @@ class PuppetclassesBelongToEnvironmentsMigrationTest < ActiveRecord::MigrationTe
     old_pc = OldPuppetclass.all.first
     assert_equal [@env_prod.id, @env_foo.id].sort, old_pc.environment_ids.sort,
       "Puppetclass belongs to both environments"
+  end
+
+  test "up clones lookup-keys and -values" do
+    pc_one = OldPuppetclass.new :name => "pc_one"
+    pc_one.environments << @env_prod.to_old
+    pc_one.environments << @env_foo.to_old
+    pc_one.save!
+
+    lk_one = LookupKey.create! :puppetclass => pc_one, :key => "lk_one"
+    lv_one = LookupValue.create! :lookup_key => lk_one, :value => "lv_one"
+
+    assert_equal 1, pc_one.lookup_keys.count,
+      "Setup: puppetclass has its lookup-key"
+    assert_equal 1, lk_one.lookup_values.count,
+      "Setup: lookup_key has its lookup-value"
+    assert_equal 1, LookupKey.count
+      "Setup: only one lookup-key"
+    assert_equal 1, LookupValue.count
+      "Setup: only one lookup-value"
+
+    up
+
+    assert_equal 2, LookupKey.count,
+      "Cloned lookup-keys"
+    assert_equal 2, LookupValue.count,
+      "Cloned lookup-values"
+
+    news = NewPuppetclass.all
+    assert_equal 2, news.map { |pc| pc.lookup_keys.map(&:id) }.flatten.uniq.size,
+      "The two puppetclasses have distinct lookup-keys"
+    assert_equal 2, news.map { |pc| pc.lookup_keys.map { |lk| lk.lookup_values.map(&:id) }.flatten }.flatten.uniq.size,
+      "The two puppetclasses have distinct lookup-values"
   end
 
 end
