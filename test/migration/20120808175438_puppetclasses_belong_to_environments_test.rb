@@ -65,11 +65,6 @@ class PuppetclassesBelongToEnvironmentsMigrationTest < ActiveRecord::MigrationTe
 
     @h_one = Host.create! :name => "h_one", :environment => @env_prod.name # note that Host.environment
     @h_two = Host.create! :name => "h_two", :environment => @env_foo.name  # is actually a mere string
-
-    # @lk_one_global_one = LookupKey.create! :puppetclass => @pc_one, :key => "lk_one", :is_param => false
-    # @lk_one_param_one  = LookupKey.create! :puppetclass => @pc_two, :key => "lk_one", :is_param => true
-    # @lk_one_two = LookupKey.create! :puppetclass => @pc_one, :key => "lk_two", :is_param => false
-    # @lk_two_two = LookupKey.create! :puppetclass => @pc_two, :key => "lk_two", :is_param => false
   end
 
   test "up does not fail" do

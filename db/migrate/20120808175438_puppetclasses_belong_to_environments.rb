@@ -95,7 +95,7 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
   def down_migrate
     return if @down_migrate_done
 
-    pc_id_to_name = {} # note id to name mapping, to reduce SQL query usage
+    pc_id_to_name = {} # note id to name mapping, to reduce SQL queries
     # Note what puppetclass name belong to what environments under what id
     pc_name_to_env_id_pc_id_mapping = Hash.new { |h,k| h[k] = {} }
     NewPuppetclass.all.each do |new_puppetclass|
@@ -132,9 +132,10 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
         current.lookup_keys.all.each do |current_lookup_key|
           target_lookup_key = target.lookup_keys.where(:key => current_lookup_key.key, :is_param => current_lookup_key.is_param).first
           if target_lookup_key.nil?
+            # Non existent on target puppetclass: steal it
             target.lookup_keys << current_lookup_key
           elsif target_lookup_key.validator_type == current_lookup_key.validator_type
-            # Merge some properties, if interesting
+            # Already existing: merge some properties, if they're interesting
             [:default_value, :description, :validator_rule].each do |prop|
               if target_lookup_key.send(prop).blank? and !current_lookup_key.send(prop).blank?
                 target_lookup_key.send(:"#{prop}=", current_lookup_key.send(prop))
@@ -145,9 +146,9 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
             target_lookup_key.is_mandatory = true if current_lookup_key.is_mandatory
             # Merge lookup values
             current_lookup_key.lookup_values.all.each do |current_lookup_value|
-              debugger
               target_lookup_value = target_lookup_key.lookup_values.where(:match => current_lookup_value.match).first
               if target_lookup_value.nil?
+                # Non existent on target lookup-key: steal it
                 target_lookup_key.lookup_values << current_lookup_value
               else
                 # Drop, as values can't be null, there is nothing to merge
