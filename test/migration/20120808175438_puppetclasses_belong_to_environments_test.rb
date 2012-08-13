@@ -389,4 +389,32 @@ class PuppetclassesBelongToEnvironmentsMigrationTest < ActiveRecord::MigrationTe
       "Hostgroup took the merged puppetclass (two, #{@hg_two.environment.name})"
   end
 
+  test "down unassigns unmergeable lookup-keys" do
+    pc_one_prod = NewPuppetclass.create! :name => "pc_one", :environment => @env_prod.to_new
+    pc_one_foo  = NewPuppetclass.create! :name => "pc_one", :environment => @env_foo .to_new
+
+    lk_one_prod = LookupKey.create! :puppetclass => pc_one_prod, :key => "lk_one", :validator_type => 'list'
+    lk_one_foo  = LookupKey.create! :puppetclass => pc_one_foo , :key => "lk_one", :validator_type => 'string'
+
+    down
+
+    assert_equal 2, LookupKey.count,
+      "Merged lookup-key + unassigned lookup-key"
+
+    lks = LookupKey.all
+    if lks.first.puppetclass_id.nil?
+      lk_one_new = lks.pop
+      lk_one_nil = lks.pop
+    else
+      lk_one_new = lks.shift
+      lk_one_nil = lks.shift
+    end
+    assert_not_nil lk_one_new
+    assert_not_nil lk_one_nil
+    assert_not_nil lk_one_new.puppetclass_id,
+      "We have an assigned key"
+    assert_nil     lk_one_nil.puppetclass_id,
+      "We have an unassigned key"
+  end
+
 end

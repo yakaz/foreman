@@ -158,8 +158,9 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
             # Merged, can now be deleted
             current_lookup_key.destroy
           else
-            # Drop if the types don't match
-            current_lookup_key.destroy
+            # Unassign if the types don't match
+            current_lookup_key.puppetclass_id = nil
+            current_lookup_key.save!
           end
         end
       end
