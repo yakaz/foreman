@@ -1,7 +1,28 @@
 class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
 
-  def self.up
+  def method_missing m, *args, &block
+    # Forward to the class
+    if block_given?
+      self.class.send(m, *args) {|*args| block.call(*args)}
+    else
+      self.class.send(m, *args)
+    end
+  end
+
+  def skip direction, part
+    instance_variable_set :"@#{direction}_#{part}_done", true
+  end
+
+  def up_initialize
+    return if @up_initialize_done
+
     add_column :puppetclasses, :environment_id, :integer
+
+    @up_initialize_done = true
+  end
+
+  def up_migrate
+    return if @up_migrate_done
 
     # Duplicate puppetclasses: one per environment
     pc_id_to_clone_ids_by_env = {} # mapping to find the new puppetclass id
@@ -33,14 +54,42 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
       hg.save! :validate => false
     end
 
-    drop_table :environments_puppetclasses
+    @up_migrate_done = true
   end
 
-  def self.down
+  def up_finalize
+    return if @up_finalize_done
+
+    drop_table :environments_puppetclasses
+
+    @up_finalize_done = true
+  end
+
+  def self.up
+    new.up
+  end
+  def up
+    # Method split down for better testability
+    up_initialize
+    up_migrate
+    up_finalize
+  end
+  alias_method :up_with_benchmarks, :up
+  alias_method :up_without_benchmarks, :up
+
+  def down_initialize
+    return if @down_initialize_done
+
     create_table :environments_puppetclasses, :id => false do |t|
       t.references :puppetclass, :null => false
       t.references :environment, :null => false
     end
+
+    @down_initialize_done = true
+  end
+
+  def down_migrate
+    return if @down_migrate_done
 
     pc_id_to_name = {} # note id to name mapping, to reduce SQL query usage
     # Note what puppetclass name belong to what environments under what id
@@ -60,19 +109,20 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
 
     # Merge references
     Host.all.each do |h|
-      h.puppetclass_ids.map { |id| pc_name_to_env_id_pc_id_mapping[pc_id_to_name[id]]["new_id"] }
+      h.puppetclass_ids = h.puppetclass_ids.map { |id| pc_name_to_env_id_pc_id_mapping[pc_id_to_name[id]]["new_id"] }
       h.save! :validate => false
     end
     Hostgroup.all.each do |hg|
-      hg.puppetclass_ids.map { |id| pc_name_to_env_id_pc_id_mapping[pc_id_to_name[id]]["new_id"] }
+      hg.puppetclass_ids = hg.puppetclass_ids.map { |id| pc_name_to_env_id_pc_id_mapping[pc_id_to_name[id]]["new_id"] }
       hg.save! :validate => false
     end
 
     # Merge lookup keys
-    pc_name_to_env_id_pc_id_mapping.each do |_,group|
+    pc_name_to_env_id_pc_id_mapping.each do |_,_group|
+      group = _group.dup
       target_id = group.delete "new_id"
+      group.delete_if { |k,v| v == target_id }
       target = OldPuppetclass.find_by_id target_id
-      group.delete target_id
       group.each do |_,pc_id|
         current = NewPuppetclass.find_by_id pc_id
         current.lookup_keys.all.each do |current_lookup_key|
@@ -106,16 +156,46 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
     end
 
     # Remove old puppetclasses
-    pc_name_to_env_id_pc_id_mapping.each do |_,group|
+    pc_name_to_env_id_pc_id_mapping.each do |_,_group|
+      group = _group.dup
       survivor_id = group.delete "new_id"
-      group.delete survivor_id
+      group.delete_if { |k,v| v == survivor_id }
       group.each do |_,pc_id|
         NewPuppetclass.destroy pc_id
       end
     end
 
-    remove_column :puppetclasses, :environment_id
+    # Merging environments of puppetclasses
+    pc_name_to_env_id_pc_id_mapping.each do |_,_group|
+      group = _group.dup
+      target_id = group.delete "new_id"
+      target = OldPuppetclass.find_by_id target_id
+      target.environment_ids = group.each_key.to_a
+      target.save!
+    end
+
+    @down_migrate_done = true
   end
+
+  def down_finalize
+    return if @down_finalize_done
+
+    remove_column :puppetclasses, :environment_id
+
+    @down_finalize_done = true
+  end
+
+  def self.down
+    new.down
+  end
+  def down
+    # Method split down for better testability
+    down_initialize
+    down_migrate
+    down_finalize
+  end
+  alias_method :down_with_benchmarks, :down
+  alias_method :down_without_benchmarks, :down
 
   #
   # Define the necessary model here.

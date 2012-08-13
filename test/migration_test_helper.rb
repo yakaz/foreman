@@ -58,8 +58,10 @@ class ActiveRecord::MigrationTestCase < ActiveSupport::TestCase
   end
 
   def up
+    # Work on the instance first
     if @migration.respond_to? :up_without_benchmarks
       @migration.up_without_benchmarks
+    # Then try on the class
     elsif @migration.class.respond_to? :up_without_benchmarks
       @migration.class.up_without_benchmarks
     else
@@ -68,8 +70,10 @@ class ActiveRecord::MigrationTestCase < ActiveSupport::TestCase
   end
 
   def down
+    # Work on the instance first
     if @migration.respond_to? :down_without_benchmarks
       @migration.down_without_benchmarks
+    # Then try on the class
     elsif @migration.class.respond_to? :down_without_benchmarks
       @migration.class.down_without_benchmarks
     else
