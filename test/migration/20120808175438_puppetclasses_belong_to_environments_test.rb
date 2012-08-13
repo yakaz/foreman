@@ -100,10 +100,10 @@ class PuppetclassesBelongToEnvironmentsMigrationTest < ActiveRecord::MigrationTe
     assert_equal 2, NewPuppetclass.count,
       "cloned the puppetclass once"
 
-    news = NewPuppetclass.all
-    assert_equal pc_one.environments.all.map(&:id).sort, news.map(&:environment_id).sort,
+    new_ones = NewPuppetclass.all
+    assert_equal pc_one.environments.all.map(&:id).sort, new_ones.map(&:environment_id).sort,
       "NewPuppetclass's environments match the OldPuppetclass environments"
-    assert_equal [pc_one.name]*2, news.map(&:name),
+    assert_equal [pc_one.name]*2, new_ones.map(&:name),
       "Name it copied"
 
     # Take the puppetclass for each environment
@@ -161,10 +161,10 @@ class PuppetclassesBelongToEnvironmentsMigrationTest < ActiveRecord::MigrationTe
     assert_equal 2, LookupValue.count,
       "Cloned lookup-values"
 
-    news = NewPuppetclass.all
-    assert_equal 2, news.map { |pc| pc.lookup_keys.map(&:id) }.flatten.uniq.size,
+    new_ones = NewPuppetclass.all
+    assert_equal 2, new_ones.map { |pc| pc.lookup_keys.map(&:id) }.flatten.uniq.size,
       "The two puppetclasses have distinct lookup-keys"
-    assert_equal 2, news.map { |pc| pc.lookup_keys.map { |lk| lk.lookup_values.map(&:id) }.flatten }.flatten.uniq.size,
+    assert_equal 2, new_ones.map { |pc| pc.lookup_keys.map { |lk| lk.lookup_values.map(&:id) }.flatten }.flatten.uniq.size,
       "The two puppetclasses have distinct lookup-values"
   end
 
