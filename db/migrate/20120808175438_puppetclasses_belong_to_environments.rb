@@ -29,7 +29,7 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
                                    # corresponding to the desired environment,
                                    # from the previous puppetclass id
     OldPuppetclass.all.each do |old_puppetclass|
-      env_ids = old_puppetclass.environment_ids
+      env_ids = old_puppetclass.environment_ids.dup
       first_env_id = env_ids.shift
       mapping = pc_id_to_clone_ids_by_env[old_puppetclass.id] = {}
       mapping[first_env_id] = old_puppetclass.id
@@ -44,9 +44,13 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
       new_puppetclass.save!
     end
 
+    # Cache once, Host use environment *names*, not ids
+    env_name_to_id = {}
+    Environment.select([:id, :name]).map { |e| env_name_to_id[e.name] = e.id }
+
     # Redirect related objects to the puppetclasses from the right environment
     Host.all.each do |h|
-      h.puppetclass_ids = h.puppetclass_ids.map { |pc_id| pc_id_to_clone_ids_by_env[pc_id][h.environment_id] }
+      h.puppetclass_ids = h.puppetclass_ids.map { |pc_id| pc_id_to_clone_ids_by_env[pc_id][env_name_to_id[h.environment]] }
       h.save! :validate => false
     end
     Hostgroup.all.each do |hg|
@@ -278,9 +282,6 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
     belongs_to :environment, :class_name => 'PuppetclassesBelongToEnvironments::NewEnvironment', :inverse_of => :puppetclasses
     def clone
       new = super
-      new.hostgroups = hostgroups
-      new.host_classes = host_classes
-      new.hosts = hosts
       new.lookup_keys = lookup_keys.map(&:clone)
       new
     end
@@ -335,6 +336,7 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
   class Hostgroup < ActiveRecord::Base
     has_many :hosts, :inverse_of => :hostgroup
     has_and_belongs_to_many :puppetclasses
+    belongs_to :environment
   end
 
   class HostClass < ActiveRecord::Base

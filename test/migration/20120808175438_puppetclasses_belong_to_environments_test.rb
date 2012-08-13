@@ -60,8 +60,8 @@ class PuppetclassesBelongToEnvironmentsMigrationTest < ActiveRecord::MigrationTe
     @env_dev  = Environment.create! :name => "development"
     @env_foo  = Environment.create! :name => "foo"
 
-    @hg_one = Hostgroup.create! :name => "hg_one"
-    @hg_two = Hostgroup.create! :name => "hg_two"
+    @hg_one = Hostgroup.create! :name => "hg_one", :environment_id => @env_prod.id
+    @hg_two = Hostgroup.create! :name => "hg_two", :environment_id => @env_foo .id
 
     @h_one = Host.create! :name => "h_one", :environment => @env_prod.name # note that Host.environment
     @h_two = Host.create! :name => "h_two", :environment => @env_foo.name  # is actually a mere string
@@ -318,6 +318,75 @@ class PuppetclassesBelongToEnvironmentsMigrationTest < ActiveRecord::MigrationTe
     assert_equal 'c', lk_one_param_new. default_value
     assert_equal 'd', lk_one_param_new. description
     assert_equal 'lv_one_too', lk_one_param_new .lookup_values.first.value
+  end
+
+  test "up selects the right puppetclass clone" do
+    pc_one = OldPuppetclass.create! :name => "pc_one", :environment_ids => [@env_prod.id, @env_foo.id, @env_dev.id]
+    @h_one.puppetclass_ids = [pc_one.id]
+    @h_one.save!
+    @h_two.puppetclass_ids = [pc_one.id]
+    @h_two.save!
+    @hg_one.puppetclass_ids = [pc_one.id]
+    @hg_one.save!
+    @hg_two.puppetclass_ids = [pc_one.id]
+    @hg_two.save!
+
+    up
+
+    @h_one.clear_association_cache
+    @h_two.clear_association_cache
+    @hg_one.clear_association_cache
+    @hg_two.clear_association_cache
+
+    assert_equal 3, NewPuppetclass.count,
+      "Puppetclass got cloned"
+
+    assert_not_nil pc_one_prod = NewPuppetclass.where(:environment_id => @env_prod.id).first
+    assert_not_nil pc_one_foo  = NewPuppetclass.where(:environment_id => @env_foo .id).first
+    assert_not_nil pc_one_dev  = NewPuppetclass.where(:environment_id => @env_dev .id).first
+
+    assert_equal [pc_one_prod.id], @h_one.puppetclass_ids,
+      "Host took the matching puppetclass (one, #{@h_one.environment})"
+    assert_equal [pc_one_foo .id], @h_two.puppetclass_ids,
+      "Host took the matching puppetclass (two, #{@h_two.environment})"
+    assert_equal [pc_one_prod.id], @hg_one.puppetclass_ids,
+      "Hostgroup took the matching puppetclass (one, #{@hg_one.environment.name})"
+    assert_equal [pc_one_foo .id], @hg_two.puppetclass_ids,
+      "Hostgroup took the matching puppetclass (two, #{@hg_two.environment.name})"
+  end
+
+  test "down merges puppetclasses references" do
+    pc_one_prod = NewPuppetclass.create! :name => "pc_one", :environment => @env_prod.to_new
+    pc_one_foo  = NewPuppetclass.create! :name => "pc_one", :environment => @env_foo .to_new
+
+    @h_one.puppetclass_ids = [pc_one_prod.id]
+    @h_one.save!
+    @h_two.puppetclass_ids = [pc_one_foo .id]
+    @h_two.save!
+    @hg_one.puppetclass_ids = [pc_one_prod.id]
+    @hg_one.save!
+    @hg_two.puppetclass_ids = [pc_one_foo .id]
+    @hg_two.save!
+
+    down
+
+    @h_one.clear_association_cache
+    @h_two.clear_association_cache
+    @hg_one.clear_association_cache
+    @hg_two.clear_association_cache
+
+    assert_equal 1, OldPuppetclass.count,
+      "Puppetclasses got merged"
+    assert_not_nil pc_one_old = OldPuppetclass.first
+
+    assert_equal [pc_one_old.id], @h_one.puppetclass_ids,
+      "Host took the merged puppetclass (one, #{@h_one.environment})"
+    assert_equal [pc_one_old.id], @h_two.puppetclass_ids,
+      "Host took the merged puppetclass (two, #{@h_two.environment})"
+    assert_equal [pc_one_old.id], @hg_one.puppetclass_ids,
+      "Hostgroup took the merged puppetclass (one, #{@hg_one.environment.name})"
+    assert_equal [pc_one_old.id], @hg_two.puppetclass_ids,
+      "Hostgroup took the merged puppetclass (two, #{@hg_two.environment.name})"
   end
 
 end
