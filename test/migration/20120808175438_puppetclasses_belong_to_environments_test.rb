@@ -234,4 +234,30 @@ class PuppetclassesBelongToEnvironmentsMigrationTest < ActiveRecord::MigrationTe
       "Complementary lookup-values don't get merged into a single one"
   end
 
+  test "down merges lookup-keys properties" do
+    pc_one_prod = NewPuppetclass.create! :name => "pc_one", :environment => @env_prod.to_new
+    pc_one_foo  = NewPuppetclass.create! :name => "pc_one", :environment => @env_foo .to_new
+
+    lk_one_prod = LookupKey.create! :puppetclass => pc_one_prod, :key => "lk_one", :validator_type => 'list', :default_value => 'a', :description => 'b', :validator_rule => 'c'
+    lk_one_foo  = LookupKey.create! :puppetclass => pc_one_foo , :key => "lk_one", :validator_type => 'list', :default_value => nil, :description => nil, :validator_rule => nil
+    lk_two_prod = LookupKey.create! :puppetclass => pc_one_prod, :key => "lk_two", :validator_type => 'list', :default_value => nil, :description => nil, :validator_rule => nil
+    lk_two_foo  = LookupKey.create! :puppetclass => pc_one_foo , :key => "lk_two", :validator_type => 'list', :default_value => 'd', :description => 'e', :validator_rule => 'f'
+
+    down
+
+    assert_equal 2, LookupKey.count,
+      "Merged lookup-keys"
+
+    lk_one_new = LookupKey.where(:key => lk_one_prod.key).first
+    lk_two_new = LookupKey.where(:key => lk_two_prod.key).first
+    assert_not_nil lk_one_new
+    assert_not_nil lk_two_new
+    assert_equal 'a', lk_one_new.default_value
+    assert_equal 'b', lk_one_new.description
+    assert_equal 'c', lk_one_new.validator_rule
+    assert_equal 'd', lk_two_new.default_value
+    assert_equal 'e', lk_two_new.description
+    assert_equal 'f', lk_two_new.validator_rule
+  end
+
 end

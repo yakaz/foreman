@@ -133,7 +133,7 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
             # Merge some properties, if interesting
             [:default_value, :description, :validator_rule].each do |prop|
               if target_lookup_key.send(prop).blank? and !current_lookup_key.send(prop).blank?
-                target_lookup_key.send(prop+'=', current_lookup_key.send(prop))
+                target_lookup_key.send(:"#{prop}=", current_lookup_key.send(prop))
               end
             end
             # Merge path
@@ -150,6 +150,7 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
                 current_lookup_value.destroy
               end
             end
+            target_lookup_key.save!
             # Merged, can now be deleted
             current_lookup_key.destroy
           else
