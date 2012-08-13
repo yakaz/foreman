@@ -190,4 +190,48 @@ class PuppetclassesBelongToEnvironmentsMigrationTest < ActiveRecord::MigrationTe
       "Merged lookup-values"
   end
 
+  test "down noops non-mergeable puppetclasses" do
+    pc_one_prod = NewPuppetclass.create! :name => "pc_one", :environment => @env_prod.to_new
+    pc_two_foo  = NewPuppetclass.create! :name => "pc_two", :environment => @env_foo .to_new
+
+    down
+
+    assert_equal 2, Puppetclass.count,
+      "Independent puppetclasses don't get merged"
+  end
+
+  test "down merges separate lookup-keys" do
+    pc_one_prod = NewPuppetclass.create! :name => "pc_one", :environment => @env_prod.to_new
+    pc_one_foo  = NewPuppetclass.create! :name => "pc_one", :environment => @env_foo .to_new
+
+    lk_one_prod = LookupKey.create! :puppetclass => pc_one_prod, :key => "lk_one"
+    lk_two_foo  = LookupKey.create! :puppetclass => pc_one_foo , :key => "lk_two"
+    lv_one_prod = LookupValue.create! :lookup_key => lk_one_prod, :value => "lv_one"
+    lv_one_foo  = LookupValue.create! :lookup_key => lk_two_foo , :value => "lv_one"
+
+    down
+
+    assert_equal 2, LookupKey.count,
+      "Independent lookup-keys don't get merged"
+    assert_equal 2, LookupValue.count,
+      "Independent lookup-values don't get merged"
+  end
+
+  test "down merges separate lookup-values" do
+    pc_one_prod = NewPuppetclass.create! :name => "pc_one", :environment => @env_prod.to_new
+    pc_one_foo  = NewPuppetclass.create! :name => "pc_one", :environment => @env_foo .to_new
+
+    lk_one_prod = LookupKey.create! :puppetclass => pc_one_prod, :key => "lk_one"
+    lk_one_foo  = LookupKey.create! :puppetclass => pc_one_foo , :key => "lk_one"
+    lv_one_prod = LookupValue.create! :lookup_key => lk_one_prod, :value => "lv_one", :match => "fqdn=foo"
+    lv_two_foo  = LookupValue.create! :lookup_key => lk_one_foo , :value => "lv_two", :match => "fqdn=bar"
+
+    down
+
+    assert_equal 1, LookupKey.count,
+      "Merged lookup-keys"
+    assert_equal 2, LookupValue.count,
+      "Complementary lookup-values don't get merged into a single one"
+  end
+
 end
