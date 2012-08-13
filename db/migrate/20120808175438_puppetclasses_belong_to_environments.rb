@@ -141,15 +141,19 @@ class PuppetclassesBelongToEnvironments < ActiveRecord::Migration
             target_lookup_key.is_mandatory = true if current_lookup_key.is_mandatory
             # Merge lookup values
             current_lookup_key.lookup_values.all.each do |current_lookup_value|
-              target_lookup_value = target_lookup_key.lookup_values.where(:matcher => current_lookup_value.matcher)
+              target_lookup_value = target_lookup_key.lookup_values.where(:match => current_lookup_value.match)
               if target_lookup_value.nil?
                 target_lookup_key.lookup_values << current_lookup_value
               else
-                # Drop, as values can't be null
+                # Drop, as values can't be null, there is nothing to merge
+                current_lookup_value.destroy
               end
             end
+            # Merged, can now be deleted
+            current_lookup_key.destroy
           else
             # Drop if the types don't match
+            current_lookup_key.destroy
           end
         end
       end

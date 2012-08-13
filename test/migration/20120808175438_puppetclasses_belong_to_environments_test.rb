@@ -173,4 +173,21 @@ class PuppetclassesBelongToEnvironmentsMigrationTest < ActiveRecord::MigrationTe
       "The two puppetclasses have distinct lookup-values"
   end
 
+  test "down merges identical lookup-keys and -values" do
+    pc_one_prod = NewPuppetclass.create! :name => "pc_one", :environment => @env_prod.to_new
+    pc_one_foo  = NewPuppetclass.create! :name => "pc_one", :environment => @env_foo .to_new
+
+    lk_one_prod = LookupKey.create! :puppetclass => pc_one_prod, :key => "lk_one"
+    lk_one_foo  = LookupKey.create! :puppetclass => pc_one_foo , :key => "lk_one"
+    lv_one_prod = LookupValue.create! :lookup_key => lk_one_prod, :value => "lv_one"
+    lv_one_foo  = LookupValue.create! :lookup_key => lk_one_foo , :value => "lv_one"
+
+    down
+
+    assert_equal 1, LookupKey.count,
+      "Merged lookup-keys"
+    assert_equal 1, LookupValue.count,
+      "Merged lookup-values"
+  end
+
 end
