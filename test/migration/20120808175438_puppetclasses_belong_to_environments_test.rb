@@ -284,4 +284,40 @@ class PuppetclassesBelongToEnvironmentsMigrationTest < ActiveRecord::MigrationTe
     assert_equal [['a'], ['b'], ['c']], lk_two_new.path_elements
   end
 
+  test "down merges lookup-keys within is_param scope" do
+    pc_one_prod = NewPuppetclass.create! :name => "pc_one", :environment => @env_prod.to_new
+    pc_one_foo  = NewPuppetclass.create! :name => "pc_one", :environment => @env_foo .to_new
+
+    lk_one_global_prod = LookupKey.create! :puppetclass => pc_one_prod, :key => "lk_one", :is_param => false, :default_value => 'a', :description => nil
+    lk_one_global_foo  = LookupKey.create! :puppetclass => pc_one_foo , :key => "lk_one", :is_param => false, :default_value => nil, :description => 'b'
+    lv_one_global_prod = LookupValue.create! :lookup_key => lk_one_global_prod, :value => "lv_one"
+    lv_one_global_foo  = LookupValue.create! :lookup_key => lk_one_global_foo , :value => "lv_one"
+
+    lk_one_param_prod  = LookupKey.create! :puppetclass => pc_one_prod, :key => "lk_one", :is_param => true , :default_value => 'c', :description => nil
+    lk_one_param_foo   = LookupKey.create! :puppetclass => pc_one_foo , :key => "lk_one", :is_param => true , :default_value => nil, :description => 'd'
+    lv_one_param_prod  = LookupValue.create! :lookup_key => lk_one_param_prod,  :value => "lv_one_too"
+    lv_one_param_foo   = LookupValue.create! :lookup_key => lk_one_param_foo ,  :value => "lv_one_too"
+
+    assert_equal 1, [lk_one_global_prod, lk_one_global_foo, lk_one_param_prod, lk_one_param_foo].map(&:key).uniq.size,
+      "Setup: All lookup-keys have the same name"
+
+    down
+
+    assert_equal 2, LookupKey.count,
+      "Merged lookup-keys"
+    assert_equal 2, LookupValue.count,
+      "Merged lookup-values"
+
+    lk_one_global_new = LookupKey.where(:key => "lk_one", :is_param => false).first
+    lk_one_param_new  = LookupKey.where(:key => "lk_one", :is_param => true ).first
+    assert_not_nil lk_one_global_new
+    assert_not_nil lk_one_param_new
+    assert_equal 'a', lk_one_global_new.default_value
+    assert_equal 'b', lk_one_global_new.description
+    assert_equal 'lv_one',     lk_one_global_new.lookup_values.first.value
+    assert_equal 'c', lk_one_param_new. default_value
+    assert_equal 'd', lk_one_param_new. description
+    assert_equal 'lv_one_too', lk_one_param_new .lookup_values.first.value
+  end
+
 end
