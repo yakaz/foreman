@@ -7,7 +7,7 @@ class PuppetclassesBelongToEnvironmentsMigrationTest < ActiveRecord::MigrationTe
       c = prefix+klass
       const_set(c, @@migration.const_get(c)) if @@migration.const_defined? c
     end
-  end
+  end if @@migration
 
   class OldEnvironmentsPuppetclass < ActiveRecord::Base
     set_table_name 'environments_puppetclasses'

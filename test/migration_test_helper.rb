@@ -13,10 +13,10 @@ class ActiveRecord::MigrationTestCase < ActiveSupport::TestCase
       setup :silence_migrations
       setup :get_migration_instance
     else
-      class_eval do
-        alias :run :skip_run
-      end
+      alias :run :skip_run
     end
+
+    super
   end
 
   def self.load_appropriate_migration
@@ -28,8 +28,9 @@ class ActiveRecord::MigrationTestCase < ActiveSupport::TestCase
     match = matches.first
     @@migration_version = match.sub(/^db\/migrate\/(#{'[0-9]'*14})_.*\.rb$/, '\1').to_i
 
-    if ActiveRecord::Migrator.get_all_versions.include? @migration_version
-      puts "Warning: Migration already applied: #{match}. Skipping its tests..."
+    if ActiveRecord::Migrator.get_all_versions.include? @@migration_version
+      puts "Note: Migration already applied: #{match}. Skipping its tests..."
+      @@migration = nil
       false
     else
       require match
