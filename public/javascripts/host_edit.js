@@ -166,10 +166,12 @@ function add_puppet_class(item){
   link.attr('data-original-title', 'Click to undo adding this class');
   link.removeClass('ui-icon-plus').addClass('ui-icon-minus').tooltip();
 
-  var smart_var = content.children('a[data-tag="edit"]');
-  smart_var.attr('onclick', 'smart_var_dialog(this)');
-  smart_var.removeClass('hide');
-  smart_var.tooltip();
+  if ($('#puppetclasses_parameters').length > 0) {
+    var smart_var = content.children('a[data-tag="edit"]');
+    smart_var.attr('onclick', 'smart_var_dialog(this)');
+    smart_var.removeClass('hide');
+    smart_var.tooltip();
+  } // else: no support for overridding puppetclasses parameters (hostgroup form), keep the edit link hidden
 
   $('#selected_classes').append(content);
 
@@ -202,6 +204,7 @@ function load_puppet_class_parameters(item) {
   var url = $item.siblings('a[data-tag="edit"]').attr('data-url');
   if (url == undefined) return; // no parameters
   var target = $('#inherited_puppetclasses_parameters');
+  if (target.length == 0) return; // no support for puppetclasses parameters (hostgroup form), quit
   var placeholder = $('<tr id="puppetclass_'+id+'_params_loading">'+
       '<td>'+name+'</td>'+
       '<td colspan="5"><p><img src="/images/spinner.gif" alt="Wait" /> Loading parameters...</p></td>'+
