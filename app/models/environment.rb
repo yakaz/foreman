@@ -128,7 +128,7 @@ class Environment < ActiveRecord::Base
                 else
                   @import_errors += key.errors.map(&:to_s)
                 end
-              end
+              end unless parameters.blank?
             else
               @import_errors += pc.errors.map(&:to_s)
             end
