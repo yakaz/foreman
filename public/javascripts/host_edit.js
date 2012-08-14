@@ -201,7 +201,7 @@ function load_puppet_class_parameters(item) {
   var type = $item.attr('data-type');
   var url = $item.siblings('a[data-tag="edit"]').attr('data-url');
   if (url == undefined) return; // no parameters
-  var target = $('#puppetclasses_parameters');
+  var target = $('#inherited_puppetclasses_parameters');
   var placeholder = $('<tr id="puppetclass_'+id+'_params_loading">'+
       '<td>'+name+'</td>'+
       '<td colspan="5"><p><img src="/images/spinner.gif" alt="Wait" /> Loading parameters...</p></td>'+
@@ -226,26 +226,34 @@ function load_puppet_class_parameters(item) {
 function smart_var_dialog(item) {
   var $item = $(item);
   var id = $item.attr('data-class-id');
-  var target = $('#puppetclasses_parameters');
+  var target_inherited = $('#inherited_puppetclasses_parameters');
+  var target_host      = $('#puppetclasses_parameters');
   var name = $item.prevAll('span').text();
   var type = $item.attr('data-type');
-  var placeholder = $('<div><img src="/images/edit.png"/>Currently under edition...</div>');
-  target.replaceWith(placeholder);
-  target.addClass('hide-first-col');
-  target.find('tr[id^="puppetclass_"][id*="_params\\["]').addClass('hide');
-  target.find('tr[id^="puppetclass_'+id+'_params\\["]').removeClass('hide');
+  var placeholder_inherited = $('<div><img src="/images/edit.png"/> Currently under edition...</div>');
+  var placeholder_host = placeholder_inherited.clone();
+  target_inherited.replaceWith(placeholder_inherited);
+  target_inherited.addClass('hide-first-col');
+  target_inherited.find('tr[id^="puppetclass_"][id*="_params\\["]').addClass('hide');
+  target_inherited.find('tr[id^="puppetclass_'+id+'_params\\["]').removeClass('hide');
+  target_host.replaceWith(placeholder_host);
+  target_host.children('.fields[data-puppetclass_id!="'+id+'"]').addClass('hide');
+  target_host.addClass('hide-puppetclass-name');
   var box = $('<div class="modal scrollable modal10 fade"><a class="close" data-dismiss="modal">&times;</a><h3 class="modal-header">'+$item.prevAll('span').text()+'</h3></div>');
   box.on('hidden', function() {
-    target.removeClass('hide-first-col');
-    target.find('tr[id^="puppetclass_"][id*="_params\\["]').removeClass('hide');
-    target.removeClass('modal-body');
-    placeholder.replaceWith(target);
-    // Apparently not needed here... //target.find('a[rel="popover"]').popover(); // fix .data() gone when moving the target
+    target_inherited.removeClass('hide-first-col');
+    target_inherited.find('tr[id^="puppetclass_"][id*="_params\\["]').removeClass('hide');
+    placeholder_inherited.replaceWith(target_inherited);
+    placeholder_host.replaceWith(target_host);
+    target_host.children('.fields').removeClass('hide');
+    target_host.removeClass('hide-puppetclass-name');
+    // Apparently not needed here... //target_inherited.find('a[rel="popover"]').popover(); // fix .data() gone when moving the target
     box.remove();
   });
   var body = $('<div class="modal-body"></div>');
-  body.append(target);
-  target.find('a[rel="popover"]').popover(); // fix .data() gone when moving the target
+  body.append(target_inherited);
+  body.append(target_host);
+  target_inherited.find('a[rel="popover"]').popover(); // fix .data() gone when moving the target
   box.append(body);
   box.modal('show');
 }
@@ -443,6 +451,7 @@ function override_param(item){
 
 function override_class_param(item){
   var param = $(item).closest('tr[id^="puppetclass_"][id*="_params\\["][id$="\\]"]');
+  var class_id = param.attr('id').replace(/puppetclass_(\d+)_params\[\d+\]/, '$1')
   var id = param.attr('id').replace(/puppetclass_\d+_params\[(\d+)\]/, '$1')
   var c = param.find('[data-property=class]').text();
   var n = param.find('[data-property=name]').text();
@@ -450,7 +459,8 @@ function override_class_param(item){
   var t = param.find('[data-property=type]').text();
 
   $('#puppetclasses_parameters').find('.btn-success').click();
-  var new_param = param.closest('.tab-pane').find('[id*=host_lookup_values]:visible').last().parent();
+  var new_param = $('#puppetclasses_parameters').find('[id*=host_lookup_values]:visible').last().closest('.fields');
+  new_param.attr('data-puppetclass_id', class_id);
   new_param.find('[data-property=lookup_key_id]').val(id);
   new_param.find('[data-property=class]').val(c);
   new_param.find('[data-property=name]').val(n);

@@ -361,4 +361,5 @@ border-radius: 4px;
 .override-param{
   text-decoration: line-through;
 }
+.hide-puppetclass-name [data-property="class"]{display:none;}
 .btn-toolbar-condensed{margin: 0;}

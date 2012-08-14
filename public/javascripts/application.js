@@ -90,7 +90,7 @@ function mark_params_override(){
   })
   $('#inherited_puppetclasses_parameters .override-param').removeClass('override-param');
   $('#inherited_puppetclasses_parameters [data-tag=override]').show();
-  $('#puppetclasses_parameters').find('[data-property=class]:visible').each(function(){
+  $('#puppetclasses_parameters').find('.fields:visible [data-property=class]').each(function(){
     var klass = $(this).val();
     var name = $(this).siblings('[data-property=name]').val();
     $('#inherited_puppetclasses_parameters [id^="puppetclass_"][id*="_params\\["][id$="\\]"]').each(function(){
