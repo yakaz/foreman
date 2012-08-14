@@ -20,10 +20,10 @@ class PuppetclassTest < ActiveSupport::TestCase
   end
 
   test "name must be unique" do
-    puppet_class = Puppetclass.new :name => "test class"
+    puppet_class = Puppetclass.new :name => "test class", :environment => environments(:production)
     assert puppet_class.save
 
-    other_puppet_class = Puppetclass.new :name => "test class"
+    other_puppet_class = Puppetclass.new :name => "test class", :environment => environments(:production)
     assert !other_puppet_class.save
   end
 

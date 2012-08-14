@@ -98,10 +98,9 @@ class EnvironmentsControllerTest < ActionController::TestCase
     # This is the database status
     # and should result in a db_tree of {"env1" => {"a"=>{}, "b"=>{}, "c"=>{}}, "env2" => {"a"=>{}, "b"=>{}, "c"=>{}}}
     as_admin do
-      ["a", "b", "c"].each  {|name| Puppetclass.create :name => name}
       for name in ["env1", "env2"] do
         e = Environment.create!(:name => name)
-        e.puppetclasses += [Puppetclass.find_by_name("a"), Puppetclass.find_by_name("b"), Puppetclass.find_by_name("c")]
+        e.puppetclasses += [Puppetclass.create(:name => "a"), Puppetclass.create(:name => "b"), Puppetclass.create(:name => "c")]
       end
     end
     # This is the on-disk status
@@ -126,7 +125,7 @@ class EnvironmentsControllerTest < ActionController::TestCase
       }, set_session_user
     assert_redirected_to environments_url
     assert flash[:notice] = "Successfully updated environments and puppetclasses from the on-disk puppet installation"
-    assert Environment.find_by_name("env1").puppetclasses.map(&:name).sort == ["a", "b", "c"]
+    assert_equal ["a", "b", "c"], Environment.find_by_name("env1").puppetclasses.map(&:name).sort
   end
   test "should handle disk environment containing less classes" do
     setup_import_classes

@@ -27,12 +27,12 @@ class Puppetclass < ActiveRecord::Base
   def self.from_param param
     return find Integer(param) rescue nil
     env_name, name = param.split('$')
-    (env = Environment.find_by_name env_name) or return nil
-    env.puppetclasses.where(:name => name).first
+    (env_id = Environment.find_by_name env_name) or return nil unless env_name.blank?
+    Puppetclass.where(:environment_id => env_id, :name => name).first
   end
 
   def to_param
-    "#{environment.name}$#{name}"
+    "#{environment.try(:name)}$#{name}"
   end
 
   # returns a hash containing modules and associated classes

@@ -19,7 +19,6 @@ class LookupKey < ActiveRecord::Base
   has_many :lookup_values, :dependent => :destroy, :inverse_of => :lookup_key
   accepts_nested_attributes_for :lookup_values, :reject_if => lambda { |a| a[:value].blank? }, :allow_destroy => true
   validates_uniqueness_of :key, :scope => :puppetclass_id, :if => Proc.new { |lookup_key| lookup_key.puppetclass && lookup_key.is_param } # unique parameter name per puppetclass
-  validates_uniqueness_of :key, :scope => :'environment_id', :if => Proc.new { |lookup_key| lookup_key.puppetclass && !lookup_key.is_param }
   validates_presence_of :key # unique global name (only for non detached smart-vars)
   validates_inclusion_of :validator_type, :in => VALIDATION_TYPES, :message => "invalid", :allow_blank => true, :allow_nil => true
   before_validation :validate_and_cast_rule
