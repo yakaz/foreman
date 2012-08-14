@@ -12,8 +12,8 @@
     <div class="tab-pane active" id="primary">
       <%= text_f f, :name %>
 
-      <%= multiple_checkboxes f, :environments, @puppetclass, Environment, :label => "Puppet Environments" %>
-      <%= multiple_checkboxes f, :hostgroups,   @puppetclass, Hostgroup,   :label => "Hostgroups" %>
+      <%= select_f            f, :environment_id, Environment.all, :id, :name, :include_blank => true, :label => "Puppet Environment" %>
+      <%= multiple_checkboxes f, :hostgroups, @puppetclass, Hostgroup, :label => "Hostgroups" %>
     </div>
 
     <div class="tab-pane" id="smart_vars">

@@ -3,7 +3,7 @@ require 'foreman/controller/environments'
 class PuppetclassesController < ApplicationController
   include Foreman::Controller::Environments
   include Foreman::Controller::AutoCompleteSearch
-  before_filter :find_by_name, :only => [:edit, :update, :destroy, :assign]
+  before_filter :find_from_param, :only => [:edit, :update, :destroy, :assign]
   before_filter :setup_search_options, :only => :index
 
   def index
@@ -16,7 +16,7 @@ class PuppetclassesController < ApplicationController
 
     respond_to do |format|
       format.html do
-        @puppetclasses = values.paginate :page => params[:page], :include => [:environments, :hostgroups]
+        @puppetclasses = values.paginate :page => params[:page], :include => [:environment, :hostgroups]
         @host_counter = Host.count(:group => :puppetclass_id, :joins => :puppetclasses, :conditions => {:puppetclasses => {:id => @puppetclasses}})
         @keys_counter = LookupKey.count(:group => :puppetclass_id, :conditions => {:puppetclass_id => @puppetclasses})
       end
@@ -64,6 +64,11 @@ class PuppetclassesController < ApplicationController
       error @puppetclass.errors.full_messages.join("<br/>")
     end
     redirect_to puppetclasses_url
+  end
+
+  private
+  def find_from_param
+    (@puppetclass = Puppetclass.from_param params[:id]) or return not_found
   end
 
 end

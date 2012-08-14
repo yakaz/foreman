@@ -35,7 +35,8 @@
     </div>
     <div class="row">
       <%= render "puppetclasses/classes",
-        :puppetclasses => (defined?(@environment) ? @environment.puppetclasses : Puppetclass.all), :selected_puppet_classes => obj.all_puppetclasses,
+        :puppetclasses => (obj.environment.blank? ? Puppetclass.all : obj.environment.puppetclasses),
+        :selected_puppet_classes => obj.all_puppetclasses,
         :obj => obj,
         :type => obj.class.to_s.downcase
       %>

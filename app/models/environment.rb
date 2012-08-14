@@ -157,7 +157,7 @@ class Environment < ActiveRecord::Base
                 @import_errors << "Unable to find puppet class #{pclass} in the foreman database"
               else
                 env.puppetclasses.delete pc
-                unless pc.environments.any? or pc.hosts.any?
+                unless pc.hosts.any?
                   pc.destroy
                   @import_errors += pc.errors.full_messages unless pc.errors.empty?
                 end
