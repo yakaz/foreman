@@ -73,6 +73,12 @@ module LayoutHelper
     end
   end
 
+  def grouped_select_f(f, attr, array, group_id, group_method, id, method, select_options = {}, html_options = {})
+    field(f, attr, html_options) do
+      f.grouped_collection_select attr, array, group_id, group_method, id, method, select_options, html_options
+    end
+  end
+
   def selectable_f(f, attr, array, select_options = {}, html_options = {})
     field(f, attr, html_options) do
       f.select attr, array, select_options, html_options

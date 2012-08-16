@@ -6,7 +6,7 @@
       select_f f, :puppetclass_id, [Puppetclass.from_param(params["puppetclass_id"])], :id, :to_label, {}, {:label => "Puppet class", :disabled => true}
     else # new smart-var with no particular context
       # Give a select for choosing the parent puppetclass
-      select_f f, :puppetclass_id, Puppetclass.all, :id, :to_label, { :include_blank => 'None' }, {:label => "Puppet class"}
+      grouped_select_f f, :puppetclass_id, Puppetclass::EnvironmentByPuppetclass.all, :environments, :to_label, :puppetclass_id, :to_label, { :include_blank => 'None' }, {:label => "Puppet class"}
     end unless @puppetclass # nested smart-vars form in a tab of puppetclass/_form: no edition allowed, and the puppetclass is already visible as a context
   %>
   <%= text_f f, :key, :label => "Name" %>

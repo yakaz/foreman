@@ -60,6 +60,74 @@ class Puppetclass < ActiveRecord::Base
     name.gsub(module_name+"::","")
   end
 
+  class EnvironmentByPuppetclass
+    class Environment
+      attr_accessor :id, :name, :puppetclass_id
+      def initialize hash
+        @id = hash[:id].to_i
+        @name = hash[:name]
+        @puppetclass_id = hash[:puppetclass_id]
+      end
+      def to_label
+        @name
+      end
+    end
+    attr_accessor :name, :environments
+    def initialize hash
+      @id = hash[:id].to_i
+      @name = hash[:name]
+      @environments = hash[:environments]
+    end
+    def to_label
+      @name
+    end
+    def self.all
+      p = ::Puppetclass.arel_table
+      e = ::Environment.arel_table
+      sql = p.
+        join(e).
+          on(p[:environment_id].eq(e[:id])).
+        project([
+          p[:id].as(:pid),
+          p[:name].as(:pname),
+          e[:id].as(:eid),
+          e[:name].as(:ename)
+        ]).
+        order([p[:name], e[:name]]).
+        to_sql
+      rslt = ActiveRecord::Base.connection.execute sql
+      require 'pp'
+      by_name = Hash.new { |h,k|
+        h[k] = {
+          :name => k,
+          :environments => Hash.new { |hh,kk|
+            hh[kk[:eid]] = {
+              :id => kk[:eid],
+              :name => "#{kk[:pname]} (#{kk[:ename]})",
+              :puppetclass_id => kk[:pid]
+            }
+          }
+        }
+      }
+      rslt.each_hash do |h| h = h.with_indifferent_access
+        # Let the Hashes new's blocks merge things
+        by_name[ h[:pname] ][ :environments ][ h ]
+      end
+      rtn = []
+      by_name.each_value.
+          sort{|a,b| a[:name] <=> b[:name]}.
+          each do |h|
+        h[:environments] = h[:environments].each_value.
+            sort{|a,b| a[:name] <=> b[:name]}.
+            map do |hh|
+          EnvironmentByPuppetclass::Environment.new hh
+        end
+        rtn << new(h)
+      end
+      rtn
+    end
+  end
+
 
   # Populates the rdoc tree with information about all the classes in your modules.
   #   Firstly, we prepare the modules tree
