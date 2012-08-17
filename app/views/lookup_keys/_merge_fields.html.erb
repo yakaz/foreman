@@ -1,0 +1,16 @@
+<%=
+  opts = {}
+  opts[:no_parent] = true
+  opts[:no_remove] = true
+  opts[:no_name] = true
+  if @lookup_key
+    opts[:disabled] = true
+    opts[:no_help] = true
+    opts[:no_add_values] = true
+    fields_for @lookup_key do |f|
+      render :partial => 'fields', :locals => {:f => f, :special_opts => opts}
+    end
+  else
+    render :partial => 'fields', :locals => {:f => f, :special_opts => opts}
+  end
+%>

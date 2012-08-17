@@ -80,6 +80,9 @@ Foreman::Application.routes.draw do
     resources :bookmarks, :except => [:show]
     resources :lookup_keys do
       resources :lookup_values, :only => [:index, :create, :update, :destroy]
+      collection do
+        get 'merge'
+      end
     end
 
     resources :facts, :only => [:index, :show] do

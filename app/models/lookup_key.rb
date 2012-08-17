@@ -27,6 +27,7 @@ class LookupKey < ActiveRecord::Base
 
   scoped_search :on => :key, :complete_value => true, :default_order => true
   scoped_search :in => :puppetclass, :on => :name, :rename => :puppetclass, :complete_value => true
+  scoped_search :in => :puppetclass, :on => :id, :rename => :puppetclass_id, :complete_value => true
   scoped_search :in => :lookup_values, :on => :value, :rename => :value, :complete_value => true
 
   default_scope :order => 'LOWER(lookup_keys.key)'
@@ -196,6 +197,10 @@ class LookupKey < ActiveRecord::Base
     self.send(method, value) rescue raise TypeError
   end
 
+  def as_json(options={})
+    super({:only => [:key, :is_param, :description, :default_value, :id]}.merge(options))
+  end
+
   private
 
   # Generate possible lookup values type matches to a given host
@@ -242,10 +247,6 @@ class LookupKey < ActiveRecord::Base
     array.map do |sub_array|
       sub_array.is_a?(Array) ? sub_array.join(KEY_DELM) : sub_array
     end.join("\n")
-  end
-
-  def as_json(options={})
-    super({:only => [:key, :is_param, :description, :default_value, :id]}.merge(options))
   end
 
   private

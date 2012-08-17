@@ -2,6 +2,23 @@ $(function() {
   onContentLoad();
 });
 
+function parseLocationHash() {
+  var rtn = {};
+  if (window.location.hash != '') {
+    var hash = window.location.hash;
+    if (hash.charAt(0) == '#')
+      hash = hash.substring(1);
+    $.each(hash.split('&'), function(idx, pair) {
+      var split = pair.indexOf('=');
+      if (split < 0)
+        rtn[pair] = undefined
+      else
+        rtn[pair.substring(0,split)] = pair.substring(split+1);
+    });
+  }
+  return rtn;
+}
+
 function onContentLoad(){
   $('.flash.error').hide().each(function(index, item) {
      if ($('.alert-message.alert-error.base').length == 0) {
@@ -41,12 +58,25 @@ function onContentLoad(){
   });
 }
 
+function bubbleFind(anchor, selector) {
+  var rtn = [];
+  $(anchor).parents().each(function(idx, obj){
+    var rslt = $(obj).find(selector);
+    if (rslt.length > 0) {
+      rtn = rslt;
+      return false;
+    }
+    return true;
+  });
+  return rtn;
+}
+
 function isFieldChecked(field) {
   return $(field).is(':checked');
 }
 
 function getSiblingField(anchor, name) {
-  return $('[name="' + $(anchor).attr('name').replace(/\[[^\]]*\]$/, '')+'['+name+']"]');
+  return bubbleFind(anchor, '[name="' + $(anchor).attr('name').replace(/\[[^\]]*\]$/, '')+'['+name+']"]');
 }
 
 function setFieldEnable(field, enabled) {

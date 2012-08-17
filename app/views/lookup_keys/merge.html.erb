@@ -1,0 +1,40 @@
+<%= javascript "lookup_keys" %>
+<% title("Merge Smart Variables") %>
+
+<div id="columns-wrapper" class="well row-fluid">
+  <div class="span4">
+    <h4>Merge from this... <%= popover('?', '
+        Choose here any smart-variable you wich to see.<br/>
+        Copy-paste values into the middle column.
+      ', :title => 'Helper view') %></h4>
+    <p></p>
+    <%= render 'merge_selector', :param => 'id_left', :data_target => 'content-left' %>
+    <div id="content-left">
+    </div>
+  </div>
+  <div class="span4">
+    <h4>Into this! <%= popover('?', '
+        This is the smart-variable you are going to save.<br/>
+        Choose a puppetclass and erase an existing smart-variable,
+        or provide a name to create a new one.
+      ', :title => 'Helper view') %></h4>
+    <p></p>
+    <div id="content-middle">
+      <%= form_for(LookupKey.new, :html => { :class => 'form-vertical' }) do |f| %>
+        <%= render 'merge_selector', :param => nil, :f => f, :data_target => 'content-middle' %>
+        <%= render 'merge_fields', :f => f %>
+        <%= submit_or_cancel f %>
+      <% end %>
+    </div>
+  </div>
+  <div class="span4">
+    <h4>... and from that <%= popover('?', '
+        Choose here any smart-variable you wich to see.<br/>
+        Copy-paste values into the middle column.
+      ', :title => 'Helper view') %></h4>
+    <p></p>
+    <%= render 'merge_selector', :param => 'id_left', :data_target => 'content-right' %>
+    <div id="content-right">
+    </div>
+  </div>
+</div>

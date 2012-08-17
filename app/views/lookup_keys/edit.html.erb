@@ -3,5 +3,7 @@
 
 <%= form_for(@lookup_key) do |f| %>
   <%= render 'fields', :f => f %>
-  <%= submit_or_cancel f %>
+  <%= submit_or_cancel f do %>
+    <%= link_to 'Merge with...', url_for(hash_for_merge_lookup_keys_path.merge(:anchor => {:id_left => @lookup_key.id})), :class => 'btn btn-warning' %>
+  <% end -%>
 <% end %>

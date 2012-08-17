@@ -1,0 +1,11 @@
+<%= field nil, :puppetclass_id, :label => 'Puppetclass' do -%>
+  <%= grouped_collection_select :lookup_key, :puppetclass_id, Puppetclass::EnvironmentByPuppetclass.all, :environments, :to_label, :puppetclass_id, :to_label, { :include_blank => 'None' }, { :label => "Puppet class", :onchange => 'merge_puppetclass_selected(this);', :'data-target' => data_target, :'data-new' => (param.nil? ? 'true' : '') } %>
+<% end -%>
+<%= field nil, :key, :label => 'Name' do -%>
+  <%= select :lookup_key, :id, [], { :include_blank => true }, { :disabled => true, :'data-target' => data_target, :'data-new' => (param.nil? ? 'true' : ''), :onchange => 'merge_smartvar_selected(this);' } %>
+  <% if param.nil? %>
+    <%= f.text_field :key, { :disabled => true, :class => 'fade' } %>
+  <% else -%>
+    <input type="text" disabled="disabled" class="fade" /><!-- for alignment purpose only -->
+  <% end -%>
+<% end -%>

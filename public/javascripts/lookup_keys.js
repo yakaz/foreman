@@ -96,3 +96,82 @@ function remove_child_node(item) {
   return false;
 }
 
+function merge_puppetclass_selected(item, cb) {
+  item = $(item);
+  var target_div = $('#'+item.attr('data-target'));
+  if (!(item.attr('data-new'))) target_div.empty();
+  var target = $('select[name="lookup_key[id]"][data-target="'+item.attr('data-target')+'"]');
+  target.empty();
+  target.attr('disabled', true);
+  var puppetclass_id = item.val();
+  if (puppetclass_id == '') return false;
+  if (target.length == 0) return false;
+  $.ajax({
+    type:'get',
+    url:'/puppetclasses/'+puppetclass_id+'/lookup_keys',
+    data:'format=json',
+    success:function(response){
+      if (target.attr('data-new')) {
+        target.append($('<option value="">New</option>'));
+      } else {
+        target.append($('<option value="">Select one</option>'));
+      }
+      $.each(response, function(index, record){
+        record = record['lookup_key'];
+        target.append($('<option></option>').attr('value', record['id']).text(record['key']));
+      })
+      target.attr('disabled', null);
+      merge_smartvar_selected(target, true);
+      target.focus();
+      if (cb) cb(item, target);
+    }
+  });
+}
+
+function merge_smartvar_selected(item, no_auto_focus) {
+  item = $(item);
+  var value = item.val();
+  var target_div = $('#'+item.attr('data-target'));
+  if (item.attr('data-new')) {
+    var target = $('input[name="lookup_key[key]"][type=text]');
+    if (value) {
+      target.attr('disabled', true);
+      target.val(item.find(':selected').text());
+      target.addClass('fade');
+    } else {
+      target.attr('disabled', null);
+      target.val('');
+      target.removeClass('fade');
+      if (!no_auto_focus) target.focus();
+    }
+  } else {
+    target_div.empty();
+    if (!value) return false;
+    $.ajax({
+      type:'get',
+      url:'/lookup_keys/merge?fields_for='+value,
+      success:function(response){
+        target_div.html(response);
+      }
+    });
+  }
+}
+
+$(function(){
+  var h = parseLocationHash();
+  var load = function(id,target) {
+    id = id.split('$');
+    target = $('[data-target="'+target+'"]');
+    var puppetclass = target.filter('[name="lookup_key[puppetclass_id]"]');
+    var lookup_key  = target.filter('[name="lookup_key[id]"]');
+    puppetclass.val(id[0]);
+    merge_puppetclass_selected(puppetclass, function() {
+      lookup_key.val(id[1]);
+      merge_smartvar_selected(lookup_key);
+    });
+  };
+  if (h['id_left'])
+    load(h['id_left'], 'content-left');
+  if (h['id_right'])
+    load(h['id_right'], 'content-right');
+});

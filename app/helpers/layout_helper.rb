@@ -92,7 +92,7 @@ module LayoutHelper
   end
 
   def field(f, attr, options = {})
-    error = f.object.errors[attr] if f.object.respond_to?(:errors)
+    error = f.object.errors[attr] if f and f.object.respond_to?(:errors)
     inline = options.delete(:help_inline)
     inline = error.to_sentence.html_safe unless error.empty?
     help_inline = inline.blank? ? '' : content_tag(:span, inline, :class => "help-inline")
@@ -100,18 +100,19 @@ module LayoutHelper
     content_tag :div, :class => "control-group #{error.empty? ? "" : 'error'}" do
       label_tag(attr, options.delete(:label), :class=>"control-label").html_safe +
         content_tag(:div, :class => "controls") do
-          yield.html_safe + help_inline.html_safe + help_block.html_safe
+        (capture do yield end).html_safe + help_inline.html_safe + help_block.html_safe
         end.html_safe
     end
   end
 
-  def submit_or_cancel f, overwrite = false, args = { }
+  def submit_or_cancel f, overwrite = false, args = { }, &block
     args[:cancel_path] ||= eval "#{controller_name}_path"
     content_tag(:div, :class => "form-actions") do
       text    = overwrite ? "Overwrite" : "Submit"
       options = overwrite ? {:class => "btn btn-danger"} : {:class => "btn btn-primary"}
       link_to("Cancel", args[:cancel_path], :class => "btn") + " " +
-      f.submit(text, options)
+      f.submit(text, options) +
+      (block.nil? ? '' : capture(&block))
     end
   end
 

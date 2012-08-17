@@ -1,9 +1,12 @@
 class LookupKeysController < ApplicationController
   include Foreman::Controller::AutoCompleteSearch
-  before_filter :find_from_param, :except => :index
+  before_filter :find_from_param, :except => [:index, :merge]
   before_filter :setup_search_options, :only => :index
 
   def index
+    if params[:search] =~ /^puppetclass = (\d+)$/
+      params[:search] = "puppetclass_id = #{$1}"
+    end
     begin
       values = LookupKey.search_for(params[:search], :order => params[:order])
     rescue => e
@@ -60,6 +63,14 @@ class LookupKeysController < ApplicationController
       process_success
     else
       process_error
+    end
+  end
+
+  def merge
+    if params[:fields_for]
+      params[:id] = params.delete :fields_for
+      find_from_param
+      render :partial => 'lookup_keys/merge_fields'
     end
   end
 

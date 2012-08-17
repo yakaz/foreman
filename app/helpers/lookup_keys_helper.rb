@@ -24,4 +24,13 @@ module LookupKeysHelper
     end
   end
 
+  def filter_html_opts(special_opts, html_opts)
+    if special_opts[:no_help]
+      html_opts.delete :help_inline
+      html_opts.delete :onchange
+    end
+    html_opts[:disabled] = true if special_opts[:disabled]
+    html_opts
+  end
+
 end
